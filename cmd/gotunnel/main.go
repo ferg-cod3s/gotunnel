@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/johncferguson/gotunnel/internal/privilege"
 	"github.com/johncferguson/gotunnel/internal/tunnel"
@@ -35,15 +37,6 @@ func main() {
 			manager = tunnel.NewManager()
 			return nil // Remove the StartTunnel() call here
 		},
-		// After: func(c *cli.Context) error {
-		// 	if manager != nil {
-		// 		if err := manager.Stop(); err != nil {
-		// 			log.Printf("Error stopping tunnels: %v", err)
-		// 			return err
-		// 		}
-		// 	}
-		// 	return nil
-		// },
 		Commands: []*cli.Command{
 			{
 				Name:  "start",
@@ -102,11 +95,53 @@ func main() {
 }
 
 func startTunnel(c *cli.Context) error {
-	return manager.StartTunnel(
-		c.Int("port"),
-		c.String("domain"),
-		c.Bool("https"),
-	)
+	// Start the tunnel using parameters from CLI flags
+	// This creates the HTTP server, sets up the proxy, and registers mDNS
+	if err := manager.StartTunnel(
+		c.Int("port"),      // Local port to forward traffic to
+		c.String("domain"), // Domain name for the tunnel (e.g., myapp)
+		c.Bool("https"),    // Whether to use HTTPS
+	); err != nil {
+		return err
+	}
+
+	// Create a channel that will never receive a value
+	// This is used to keep the program running indefinitely
+	forever := make(chan struct{})
+
+	// Create a channel for OS signals
+	// Buffer size of 1 means it can hold one signal without blocking
+	sigChan := make(chan os.Signal, 1)
+
+	// Register for SIGINT (Ctrl+C) and SIGTERM (graceful shutdown) signals
+	// When either signal is received, it will be sent to sigChan
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start a goroutine to handle shutdown
+	// This runs concurrently with the main thread
+	go func() {
+		// Wait here until a signal is received
+		<-sigChan
+
+		// Once a signal is received, begin shutdown
+		log.Println("Shutting down...")
+
+		// Stop all tunnels, unregister mDNS, and cleanup
+		if err := manager.Stop(); err != nil {
+			log.Printf("Error stopping tunnels: %v", err)
+		}
+
+		// Exit the program with status 0 (success)
+		os.Exit(0)
+	}()
+
+	// Block the main thread forever
+	// This prevents the program from exiting until a signal is received
+	// and the shutdown goroutine calls os.Exit()
+	<-forever
+
+	// This return will never be reached due to os.Exit() in the goroutine
+	return nil
 }
 
 func stopTunnel(c *cli.Context) error {

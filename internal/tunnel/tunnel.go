@@ -13,7 +13,6 @@ import (
 
 	"github.com/johncferguson/gotunnel/internal/cert"
 	"github.com/johncferguson/gotunnel/internal/mdns"
-	"github.com/johncferguson/gotunnel/internal/state"
 )
 
 type Tunnel struct {
@@ -23,6 +22,7 @@ type Tunnel struct {
 	server   *http.Server
 	listener net.Listener
 	done     chan struct{}
+	Cert     *tls.Certificate
 }
 
 type Manager struct {
@@ -40,18 +40,20 @@ func NewManager() *Manager {
 	}
 
 	// Load existing tunnels
-	states, err := state.LoadTunnels()
-	if err != nil {
-		log.Printf("Error loading tunnel state: %v", err)
-		return m
-	}
+	// Verify mDNS registration by discovering services
+	m.mdns.DiscoverServices()
+	// states, err := state.LoadTunnels()
+	// if err != nil {
+	// 	log.Printf("Error loading tunnel state: %v", err)
+	// 	return m
+	// }
 
 	// Start existing tunnels
-	for _, t := range states {
-		if err := m.StartTunnel(t.Port, t.Domain, t.HTTPS); err != nil {
-			log.Printf("Error restoring tunnel %s: %v", t.Domain, err)
-		}
-	}
+	// for _, t := range states {
+	// 	if err := m.StartTunnel(t.Port, t.Domain, t.HTTPS); err != nil {
+	// 		log.Printf("Error restoring tunnel %s: %v", t.Domain, err)
+	// 	}
+	// }
 
 	return m
 }
@@ -60,41 +62,52 @@ func (m *Manager) StartTunnel(port int, domain string, https bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Check if tunnel already exists
+	// Prevent duplicate tunnels for the same domain
 	if _, exists := m.tunnels[domain]; exists {
 		return fmt.Errorf("tunnel for domain %s already exists", domain)
 	}
 
-	// Create new tunnel
+	// Create new tunnel instance
 	tunnel := &Tunnel{
 		Port:   port,
 		Domain: domain,
 		HTTPS:  https,
-		done:   make(chan struct{}),
+		done:   make(chan struct{}), // Channel for cleanup signaling
 	}
 
-	// Start the tunnel
+	// Ensure the SSL/TLS certificate is available
+	if https {
+		cert, err := m.certManager.EnsureCert(domain + ".local")
+		if err != nil {
+			return fmt.Errorf("failed to ensure certificate: %w", err)
+		}
+		// Set the certificate in the tunnel (assuming Tunnel struct has a field for it)
+		tunnel.Cert = cert
+	}
+
+	// Start the HTTP server and set up the proxy
 	if err := m.startTunnel(tunnel); err != nil {
 		return fmt.Errorf("failed to start tunnel: %w", err)
 	}
 
-	// Add to tunnels map first
+	// Add to internal map for tracking
 	m.tunnels[domain] = tunnel
 
-	// Save state
-	if err := m.saveTunnelState(); err != nil {
-		log.Printf("Error saving tunnel state: %v", err)
-	}
+	// Persist tunnel configuration to disk
+	// if err := m.saveTunnelState(); err != nil {
+	// 	log.Printf("Error saving tunnel state: %v", err)
+	// }
 
-	// Register with mDNS after tunnel is successfully started and saved
+	// Register the domain with mDNS
 	if err := m.mdns.RegisterDomain(domain); err != nil {
-		// Cleanup if mDNS registration fails
+		// If mDNS registration fails, clean up everything
 		delete(m.tunnels, domain)
 		tunnel.stop()
 		return fmt.Errorf("failed to register mDNS: %w", err)
 	}
 
-	log.Printf("Started tunnel: %s.local -> localhost:%d (HTTPS: %v)", domain, port, https)
+	log.Printf("Started tunnel: %s.local -> localhost:%d (HTTPS: %v)",
+		domain, port, https)
 	return nil
 }
 
@@ -118,9 +131,9 @@ func (m *Manager) Stop() error {
 	m.tunnels = make(map[string]*Tunnel)
 
 	// Save empty state
-	if err := m.saveTunnelState(); err != nil {
-		log.Printf("Error saving tunnel state: %v", err)
-	}
+	// if err := m.saveTunnelState(); err != nil {
+	// 	log.Printf("Error saving tunnel state: %v", err)
+	// }
 
 	// If there were any errors, return them combined
 	if len(errs) > 0 {
@@ -138,7 +151,7 @@ func (m *Manager) startTunnel(t *Tunnel) error {
 	// Create reverse proxy
 	proxy := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
-			req.URL.Scheme = "http"
+			req.URL.Scheme = "https"
 			req.URL.Host = fmt.Sprintf("localhost:%d", t.Port)
 		},
 	}
@@ -207,9 +220,9 @@ func (m *Manager) StopTunnel(domain string) error {
 	// Remove from tunnels map
 	delete(m.tunnels, domain)
 	log.Printf("Stopped tunnel: %s", domain)
-	if err := m.saveTunnelState(); err != nil {
-		log.Printf("Error saving tunnel state: %v", err)
-	}
+	// if err := m.saveTunnelState(); err != nil {
+	// 	log.Printf("Error saving tunnel state: %v", err)
+	// }
 	return nil
 }
 
@@ -250,14 +263,14 @@ func (m *Manager) ListTunnels() []map[string]interface{} {
 	return tunnelList
 }
 
-func (m *Manager) saveTunnelState() error {
-	states := make([]state.TunnelState, 0, len(m.tunnels))
-	for _, t := range m.tunnels {
-		states = append(states, state.TunnelState{
-			Port:   t.Port,
-			Domain: t.Domain,
-			HTTPS:  t.HTTPS,
-		})
-	}
-	return state.SaveTunnels(states)
-}
+// func (m *Manager) saveTunnelState() error {
+// 	states := make([]state.TunnelState, 0, len(m.tunnels))
+// 	for _, t := range m.tunnels {
+// 		states = append(states, state.TunnelState{
+// 			Port:   t.Port,
+// 			Domain: t.Domain,
+// 			HTTPS:  t.HTTPS,
+// 		})
+// 	}
+// 	return state.SaveTunnels(states)
+// }

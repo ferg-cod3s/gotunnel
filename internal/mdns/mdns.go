@@ -1,9 +1,11 @@
 package mdns
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/grandcat/zeroconf"
 )
@@ -22,6 +24,12 @@ func New() *MDNSServer {
 func (s *MDNSServer) RegisterDomain(domain string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// Check if the domain is already registered
+	if _, exists := s.services[domain]; exists {
+		log.Printf("Service for domain %s is already registered", domain)
+		return nil // or return an error if you want to enforce uniqueness
+	}
 
 	// Remove .local suffix if present
 	name := domain
@@ -72,4 +80,35 @@ func (s *MDNSServer) Stop() error {
 		delete(s.services, domain)
 	}
 	return nil
+}
+
+func (s *MDNSServer) DiscoverServices() {
+	resolver, err := zeroconf.NewResolver(nil)
+	if err != nil {
+		log.Printf("Failed to create resolver: %v", err)
+		return
+	}
+
+	entries := make(chan *zeroconf.ServiceEntry)
+	go func() {
+		for entry := range entries {
+			log.Printf("Found service: %s.%s.%s:%d",
+				entry.Instance,
+				entry.Service,
+				entry.Domain,
+				entry.Port)
+		}
+	}()
+
+	ctx := context.Background()
+	err = resolver.Browse(ctx, "_http._tcp", "local.", entries)
+	if err != nil {
+		log.Printf("Failed to browse: %v", err)
+	}
+	err = resolver.Browse(ctx, "_https._tcp", "local.", entries)
+	if err != nil {
+		log.Printf("Failed to browse: %v", err)
+	}
+	// Wait a bit to collect responses
+	time.Sleep(time.Second * 1)
 }
