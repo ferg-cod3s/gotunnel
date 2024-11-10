@@ -8,6 +8,18 @@
 *.so
 *.dylib
 
+# State file
+.gotunnel/
+
+#bin
+bin/*
+
+#certs
+certs/*
+certs/*.key
+certs/*.crt
+
+
 # Test binary, built with `go test -c`
 *.test
 
@@ -23,3 +35,4 @@ go.work.sum
 
 # env file
 .env
+
