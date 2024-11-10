@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -16,13 +17,14 @@ import (
 )
 
 type Tunnel struct {
-	Port     int
-	Domain   string
-	HTTPS    bool
-	server   *http.Server
-	listener net.Listener
-	done     chan struct{}
-	Cert     *tls.Certificate
+	Port      int
+	HTTPSPort int
+	Domain    string
+	HTTPS     bool
+	server    *http.Server
+	listener  net.Listener
+	done      chan struct{}
+	Cert      *tls.Certificate
 }
 
 type Manager struct {
@@ -83,8 +85,37 @@ func (m *Manager) StartTunnel(port int, domain string, https bool) error {
 		}
 		// Set the certificate in the tunnel (assuming Tunnel struct has a field for it)
 		tunnel.Cert = cert
+		tunnel.HTTPSPort = 443
+
+		// In tunnel.go, inside the start function:
+		listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP("0.0.0.0"), Port: tunnel.HTTPSPort})
+		if err != nil {
+			return fmt.Errorf("failed to create listener: %w", err)
+		}
+
+		// Wrap the listener with TLS
+		tlsListener := tls.NewListener(listener, &tls.Config{
+			Certificates: []tls.Certificate{*tunnel.Cert},
+		})
+
+		// Start accepting connections
+		for {
+			conn, err := tlsListener.Accept()
+			if err != nil {
+				log.Println("Error accepting connection:", err)
+				continue
+			}
+			go handleConnection(conn, tunnel)
+		}
+
 	}
 
+	tunnel.server = &http.Server{
+		// ... other config ...
+		TLSConfig: &tls.Config{
+			Certificates: []tls.Certificate{*tunnel.Cert}, // Load certificate
+		},
+	}
 	// Start the HTTP server and set up the proxy
 	if err := m.startTunnel(tunnel); err != nil {
 		return fmt.Errorf("failed to start tunnel: %w", err)
@@ -263,14 +294,19 @@ func (m *Manager) ListTunnels() []map[string]interface{} {
 	return tunnelList
 }
 
-// func (m *Manager) saveTunnelState() error {
-// 	states := make([]state.TunnelState, 0, len(m.tunnels))
-// 	for _, t := range m.tunnels {
-// 		states = append(states, state.TunnelState{
-// 			Port:   t.Port,
-// 			Domain: t.Domain,
-// 			HTTPS:  t.HTTPS,
-// 		})
-// 	}
-// 	return state.SaveTunnels(states)
-// }
+func handleConnection(clientConn net.Conn, tunnel *Tunnel) {
+	defer clientConn.Close()
+
+	// Connect to the local application
+	localConn, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", tunnel.Port))
+	if err != nil {
+		log.Println("Error connecting to local application:", err)
+		return
+	}
+	defer localConn.Close()
+
+	// Forward traffic between client and local application
+	go io.Copy(localConn, clientConn)
+	io.Copy(clientConn, localConn)
+}
+
