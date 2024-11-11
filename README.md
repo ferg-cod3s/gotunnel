@@ -15,7 +15,7 @@ Gotunnel provides a simple and intuitive interface for creating and managing tun
 ### Creating a Tunnel
 
 To create a tunnel, simply run the `gotunnel` command without any arguments. This will start a tunnel on a random port and print the tunnel URL to the console. For example:
-This might output something like: `your-tunnel-url.gotunnel.io`
+This might output something like: `your-tunnel-url.local`
 
 ### Accessing Your Local Application
 
