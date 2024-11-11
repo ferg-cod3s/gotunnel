@@ -25,31 +25,33 @@ func (s *MDNSServer) RegisterDomain(domain string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Check if the domain is already registered
-	if _, exists := s.services[domain]; exists {
-		log.Printf("Service for domain %s is already registered", domain)
-		return nil // or return an error if you want to enforce uniqueness
-	}
-
-	// Remove .local suffix if present
 	name := domain
 	if len(name) > 6 && name[len(name)-6:] == ".local" {
 		name = name[:len(name)-6]
 	}
 
+	log.Printf("Registering domain: %s", name)
+	if _, exists := s.services[name]; exists {
+		log.Printf("Service for domain %s is already registered, unregistering it first", name)
+		if err := s.UnregisterDomain(name); err != nil {
+			return fmt.Errorf("failed to unregister existing service: %w", err)
+		}
+	}
+
 	server, err := zeroconf.Register(
 		name,
-		"_https._tcp",
+		"_http._tcp",
 		"local.",
-		443, // Default HTTP port
+		443,
 		[]string{"path=/"},
 		nil,
 	)
 	if err != nil {
+		log.Printf("Failed to register mDNS service for domain %s: %v", name, err)
 		return fmt.Errorf("failed to register mDNS service: %w", err)
 	}
 
-	s.services[domain] = server
+	s.services[name] = server
 	log.Printf("Registered mDNS service: %s.local", name)
 	return nil
 }
@@ -58,6 +60,7 @@ func (s *MDNSServer) UnregisterDomain(domain string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	log.Printf("Unregistering domain: %s", domain)
 	if server, exists := s.services[domain]; exists {
 		server.Shutdown()
 		delete(s.services, domain)
@@ -66,23 +69,8 @@ func (s *MDNSServer) UnregisterDomain(domain string) error {
 	return nil
 }
 
-func (s *MDNSServer) Start() error {
-	// mDNS doesn't need explicit start
-	return nil
-}
-
-func (s *MDNSServer) Stop() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	for domain, server := range s.services {
-		server.Shutdown()
-		delete(s.services, domain)
-	}
-	return nil
-}
-
 func (s *MDNSServer) DiscoverServices() {
+	log.Println("Discovering services...")
 	resolver, err := zeroconf.NewResolver(nil)
 	if err != nil {
 		log.Printf("Failed to create resolver: %v", err)
@@ -103,12 +91,8 @@ func (s *MDNSServer) DiscoverServices() {
 	ctx := context.Background()
 	err = resolver.Browse(ctx, "_http._tcp", "local.", entries)
 	if err != nil {
-		log.Printf("Failed to browse: %v", err)
+		log.Printf("Failed to browse HTTP services: %v", err)
 	}
-	err = resolver.Browse(ctx, "_https._tcp", "local.", entries)
-	if err != nil {
-		log.Printf("Failed to browse: %v", err)
-	}
-	// Wait a bit to collect responses
 	time.Sleep(time.Second * 1)
+	log.Println("Done discovering services")
 }

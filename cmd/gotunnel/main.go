@@ -26,16 +26,18 @@ func main() {
 			},
 		},
 		Before: func(c *cli.Context) error {
-			// Check privileges
+			log.Println("Checking privileges...")
 			if !c.Bool("no-privilege-check") {
 				if err := privilege.CheckPrivileges(); err != nil {
+					log.Printf("Privilege check failed: %v", err)
 					return err
 				}
+				log.Println("Privilege check passed.")
 			}
 
-			// Initialize tunnel manager
+			log.Println("Initializing tunnel manager...")
 			manager = tunnel.NewManager()
-			return nil // Remove the StartTunnel() call here
+			return nil
 		},
 		Commands: []*cli.Command{
 			{
@@ -55,17 +57,18 @@ func main() {
 						Required: true,
 					},
 					&cli.BoolFlag{
-						Name:  "https",
-						Value: true,
-						Usage: "Enable HTTPS",
+						Name:    "https",
+						Aliases: []string{"t"},
+						Value:   true,
+						Usage:   "Enable HTTPS",
 					},
 				},
-				Action: startTunnel,
+				Action: StartTunnel,
 			},
 			{
 				Name:   "stop",
 				Usage:  "Stop a tunnel",
-				Action: stopTunnel,
+				Action: StopTunnel,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "domain",
@@ -78,13 +81,13 @@ func main() {
 			{
 				Name:   "stopAll",
 				Usage:  "Stop all tunnels",
-				Action: stopAllTunnels,
+				Action: StopAllTunnels,
 			},
 			{
 				Name:    "list",
 				Aliases: []string{"ls"},
 				Usage:   "List all active tunnels",
-				Action:  listTunnels,
+				Action:  ListTunnels,
 			},
 		},
 	}
@@ -94,7 +97,7 @@ func main() {
 	}
 }
 
-func startTunnel(c *cli.Context) error {
+func StartTunnel(c *cli.Context) error {
 	// Start the tunnel using parameters from CLI flags
 	// This creates the HTTP server, sets up the proxy, and registers mDNS
 	if err := manager.StartTunnel(
@@ -104,6 +107,8 @@ func startTunnel(c *cli.Context) error {
 	); err != nil {
 		return err
 	}
+
+	log.Println("Tunnel started successfully")
 
 	// Create a channel that will never receive a value
 	// This is used to keep the program running indefinitely
@@ -144,15 +149,15 @@ func startTunnel(c *cli.Context) error {
 	return nil
 }
 
-func stopTunnel(c *cli.Context) error {
+func StopTunnel(c *cli.Context) error {
 	return manager.StopTunnel(c.String("domain"))
 }
 
-func stopAllTunnels(c *cli.Context) error {
+func StopAllTunnels(c *cli.Context) error {
 	return manager.Stop()
 }
 
-func listTunnels(c *cli.Context) error {
+func ListTunnels(c *cli.Context) error {
 	tunnels := manager.ListTunnels()
 	if len(tunnels) == 0 {
 		fmt.Println("No active tunnels")

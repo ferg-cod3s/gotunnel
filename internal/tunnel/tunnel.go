@@ -41,9 +41,12 @@ func NewManager() *Manager {
 		certManager: cert.New("./certs"),
 	}
 
+	log.Println("Initializing Manager and loading existing tunnels")
 	// Load existing tunnels
 	// Verify mDNS registration by discovering services
 	m.mdns.DiscoverServices()
+	log.Println("Discovered mDNS services")
+
 	// states, err := state.LoadTunnels()
 	// if err != nil {
 	// 	log.Printf("Error loading tunnel state: %v", err)
@@ -64,8 +67,11 @@ func (m *Manager) StartTunnel(port int, domain string, https bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	log.Printf("Attempting to start tunnel for domain: %s on port: %d (HTTPS: %v)", domain, port, https)
+
 	// Prevent duplicate tunnels for the same domain
 	if _, exists := m.tunnels[domain]; exists {
+		log.Printf("Tunnel for domain %s already exists", domain)
 		return fmt.Errorf("tunnel for domain %s already exists", domain)
 	}
 
@@ -79,15 +85,15 @@ func (m *Manager) StartTunnel(port int, domain string, https bool) error {
 
 	// Ensure the SSL/TLS certificate is available
 	if https {
+		log.Printf("Ensuring certificate for domain: %s.local", domain)
 		cert, err := m.certManager.EnsureCert(domain + ".local")
 		if err != nil {
+			log.Printf("Failed to ensure certificate for domain %s: %v", domain, err)
 			return fmt.Errorf("failed to ensure certificate: %w", err)
 		}
-		// Set the certificate in the tunnel (assuming Tunnel struct has a field for it)
 		tunnel.Cert = cert
-		tunnel.HTTPSPort = 443
+		tunnel.HTTPSPort = 8443
 
-		// In tunnel.go, inside the start function:
 		listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP("0.0.0.0"), Port: tunnel.HTTPSPort})
 		if err != nil {
 			return fmt.Errorf("failed to create listener: %w", err)
@@ -98,20 +104,25 @@ func (m *Manager) StartTunnel(port int, domain string, https bool) error {
 			Certificates: []tls.Certificate{*tunnel.Cert},
 		})
 
-		// Start accepting connections
-		for {
-			conn, err := tlsListener.Accept()
-			if err != nil {
-				log.Println("Error accepting connection:", err)
-				continue
-			}
-			go handleConnection(conn, tunnel)
-		}
+		// set the tunnel listeners
+		tunnel.listener = tlsListener
 
+		// Start accepting connections in a goroutine
+		go func() {
+			log.Println("accepting connections now")
+			for {
+				conn, err := tlsListener.Accept()
+				if err != nil {
+					log.Println("Error accepting connection:", err)
+					continue
+				}
+				go handleConnection(conn, tunnel)
+			}
+		}()
+		log.Println("TLS listener created successfully")
 	}
 
 	tunnel.server = &http.Server{
-		// ... other config ...
 		TLSConfig: &tls.Config{
 			Certificates: []tls.Certificate{*tunnel.Cert}, // Load certificate
 		},
@@ -129,6 +140,7 @@ func (m *Manager) StartTunnel(port int, domain string, https bool) error {
 	// 	log.Printf("Error saving tunnel state: %v", err)
 	// }
 
+	log.Println("registering domain")
 	// Register the domain with mDNS
 	if err := m.mdns.RegisterDomain(domain); err != nil {
 		// If mDNS registration fails, clean up everything
@@ -146,9 +158,11 @@ func (m *Manager) Stop() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	log.Println("Stopping all tunnels")
 	var errs []error
 	// Stop all tunnels
 	for domain, tunnel := range m.tunnels {
+		log.Printf("Stopping tunnel for domain: %s", domain)
 		if err := tunnel.stop(); err != nil {
 			errs = append(errs, fmt.Errorf("failed to stop tunnel %s: %w", domain, err))
 		}
@@ -168,17 +182,14 @@ func (m *Manager) Stop() error {
 
 	// If there were any errors, return them combined
 	if len(errs) > 0 {
-		var errMsg string
-		for _, err := range errs {
-			errMsg += err.Error() + "; "
-		}
-		return fmt.Errorf("errors while stopping tunnels: %s", errMsg)
+		log.Printf("Errors occurred while stopping tunnels: %v", errs)
 	}
 
 	return nil
 }
 
 func (m *Manager) startTunnel(t *Tunnel) error {
+	log.Printf("Starting tunnel for domain: %s", t.Domain)
 	// Create reverse proxy
 	proxy := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
@@ -195,6 +206,7 @@ func (m *Manager) startTunnel(t *Tunnel) error {
 	// Create listener
 	var err error
 	if t.HTTPS {
+		log.Printf("Starting HTTPS tunnel for domain %s on port 443", t.Domain)
 		// Generate or load certificate
 		cert, err := m.certManager.EnsureCert(t.Domain + ".local")
 		if err != nil {
@@ -233,18 +245,22 @@ func (m *Manager) StopTunnel(domain string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	log.Printf("Attempting to stop tunnel for domain: %s", domain)
 	tunnel, exists := m.tunnels[domain]
 	if !exists {
+		log.Printf("Tunnel for domain %s does not exist", domain)
 		return fmt.Errorf("tunnel for domain %s does not exist", domain)
 	}
 
 	// Stop the tunnel
 	if err := tunnel.stop(); err != nil {
+		log.Printf("Failed to stop tunnel for domain %s: %v", domain, err)
 		return fmt.Errorf("failed to stop tunnel: %w", err)
 	}
 
 	// Unregister from mDNS
 	if err := m.mdns.UnregisterDomain(domain); err != nil {
+		log.Printf("Failed to unregister mDNS for domain %s: %v", domain, err)
 		return fmt.Errorf("failed to unregister mDNS: %w", err)
 	}
 
@@ -258,6 +274,7 @@ func (m *Manager) StopTunnel(domain string) error {
 }
 
 func (t *Tunnel) stop() error {
+	log.Printf("Stopping tunnel for domain: %s", t.Domain)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -269,11 +286,16 @@ func (t *Tunnel) stop() error {
 
 	if t.listener != nil {
 		if err := t.listener.Close(); err != nil {
-			return fmt.Errorf("failed to close listener: %w", err)
+			if ne, ok := err.(*net.OpError); ok && ne.Op == "close" {
+				log.Printf("Listener for domain %s is already closed", t.Domain)
+			} else {
+				return fmt.Errorf("failed to close listener: %w", err)
+			}
 		}
 	}
 
-	close(t.done)
+	// Ensure the Done channel is closed after stopping
+	close(t.done) // Ensure this is called to signal completion
 	return nil
 }
 
@@ -296,6 +318,7 @@ func (m *Manager) ListTunnels() []map[string]interface{} {
 
 func handleConnection(clientConn net.Conn, tunnel *Tunnel) {
 	defer clientConn.Close()
+	log.Println("Handling new client connection")
 
 	// Connect to the local application
 	localConn, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", tunnel.Port))
@@ -305,8 +328,31 @@ func handleConnection(clientConn net.Conn, tunnel *Tunnel) {
 	}
 	defer localConn.Close()
 
-	// Forward traffic between client and local application
-	go io.Copy(localConn, clientConn)
-	io.Copy(clientConn, localConn)
-}
+	// Use a context with a timeout for the copy operations
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
+	// Forward traffic between client and local application
+	go func() {
+		select {
+		case <-ctx.Done():
+			log.Println("Client connection timed out")
+			return
+		default:
+			if _, err := io.Copy(localConn, clientConn); err != nil {
+				log.Println("Error copying from client to local application:", err)
+			}
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.Println("Local connection timed out")
+		return
+	default:
+		if _, err := io.Copy(clientConn, localConn); err != nil {
+			log.Println("Error copying from local application to client:", err)
+		}
+	}
+	log.Println("Forwarding traffic between client and local application")
+}

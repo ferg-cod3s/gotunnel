@@ -2,12 +2,14 @@ package privilege
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"runtime"
 )
 
 func CheckPrivileges() error {
+	log.Println("Checking privileges...")
 	switch runtime.GOOS {
 	case "windows":
 		return checkWindowsPrivileges()
@@ -18,20 +20,25 @@ func CheckPrivileges() error {
 
 func checkUnixPrivileges() error {
 	if os.Geteuid() != 0 {
+		log.Println("Privilege check failed: must be run with sudo or as root")
 		return fmt.Errorf("this program must be run with sudo or as root")
 	}
+	log.Println("Privilege check passed for Unix")
 	return nil
 }
 
 func checkWindowsPrivileges() error {
 	cmd := exec.Command("net", "session")
 	if err := cmd.Run(); err != nil {
+		log.Println("Privilege check failed: must be run as Administrator")
 		return fmt.Errorf("this program must be run as Administrator")
 	}
+	log.Println("Privilege check passed for Windows")
 	return nil
 }
 
 func ElevatePrivileges() error {
+	log.Println("Attempting to elevate privileges...")
 	if runtime.GOOS == "windows" {
 		return elevateWindows()
 	}
