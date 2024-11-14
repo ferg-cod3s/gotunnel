@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -98,9 +99,12 @@ func main() {
 }
 
 func StartTunnel(c *cli.Context) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	// Start the tunnel using parameters from CLI flags
 	// This creates the HTTP server, sets up the proxy, and registers mDNS
 	if err := manager.StartTunnel(
+		ctx,
 		c.Int("port"),      // Local port to forward traffic to
 		c.String("domain"), // Domain name for the tunnel (e.g., myapp)
 		c.Bool("https"),    // Whether to use HTTPS
@@ -132,7 +136,7 @@ func StartTunnel(c *cli.Context) error {
 		log.Println("Shutting down...")
 
 		// Stop all tunnels, unregister mDNS, and cleanup
-		if err := manager.Stop(); err != nil {
+		if err := manager.Stop(ctx); err != nil {
 			log.Printf("Error stopping tunnels: %v", err)
 		}
 
@@ -150,11 +154,15 @@ func StartTunnel(c *cli.Context) error {
 }
 
 func StopTunnel(c *cli.Context) error {
-	return manager.StopTunnel(c.String("domain"))
+	ctx := context.Background()
+	return manager.StopTunnel(ctx, c.String("domain"))
 }
 
 func StopAllTunnels(c *cli.Context) error {
-	return manager.Stop()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	return manager.Stop(ctx)
 }
 
 func ListTunnels(c *cli.Context) error {

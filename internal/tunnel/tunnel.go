@@ -3,23 +3,27 @@ package tunnel
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/johncferguson/gotunnel/internal/cert"
 	"github.com/johncferguson/gotunnel/internal/mdns"
+	"github.com/miekg/dns"
 )
 
 type Tunnel struct {
 	Port      int
 	HTTPSPort int
 	Domain    string
+	TargetIP  string
 	HTTPS     bool
 	server    *http.Server
 	listener  net.Listener
@@ -63,7 +67,7 @@ func NewManager() *Manager {
 	return m
 }
 
-func (m *Manager) StartTunnel(port int, domain string, https bool) error {
+func (m *Manager) StartTunnel(ctx context.Context, port int, domain string, https bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -75,18 +79,30 @@ func (m *Manager) StartTunnel(port int, domain string, https bool) error {
 		return fmt.Errorf("tunnel for domain %s already exists", domain)
 	}
 
-	// Create new tunnel instance
-	tunnel := &Tunnel{
-		Port:   port,
-		Domain: domain,
-		HTTPS:  https,
-		done:   make(chan struct{}), // Channel for cleanup signaling
+	domain = strings.TrimPrefix(strings.TrimSuffix(strings.ToLower(domain), ".go"), ".") + ".go"
+
+	log.Println("registering domain")
+	// Register the domain with mDNS
+	ip, err := resolveHostname(domain)
+	if err != nil {
+		return fmt.Errorf("failed to resolve hostname %s: %v", domain, err)
 	}
 
+	// Create new tunnel instance
+	tunnel := &Tunnel{
+		Port:     port,
+		Domain:   domain,
+		TargetIP: ip,
+		HTTPS:    https,
+		done:     make(chan struct{}), // Channel for cleanup signaling
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 10 * time.Second)
+    defer cancel()
 	// Ensure the SSL/TLS certificate is available
 	if https {
-		log.Printf("Ensuring certificate for domain: %s.local", domain)
-		cert, err := m.certManager.EnsureCert(domain + ".local")
+		log.Printf("Ensuring certificate for domain: %s.go", domain)
+		cert, err := m.certManager.EnsureCert(domain + ".go")
 		if err != nil {
 			log.Printf("Failed to ensure certificate for domain %s: %v", domain, err)
 			return fmt.Errorf("failed to ensure certificate: %w", err)
@@ -108,7 +124,7 @@ func (m *Manager) StartTunnel(port int, domain string, https bool) error {
 		tunnel.listener = tlsListener
 
 		// Start accepting connections in a goroutine
-		go func() {
+		go func(ctx context.Context) {
 			log.Println("accepting connections now")
 			for {
 				conn, err := tlsListener.Accept()
@@ -116,9 +132,9 @@ func (m *Manager) StartTunnel(port int, domain string, https bool) error {
 					log.Println("Error accepting connection:", err)
 					continue
 				}
-				go handleConnection(conn, tunnel)
+				go handleConnection(ctx, conn, tunnel)
 			}
-		}()
+		}(ctx)
 		log.Println("TLS listener created successfully")
 	}
 
@@ -140,21 +156,12 @@ func (m *Manager) StartTunnel(port int, domain string, https bool) error {
 	// 	log.Printf("Error saving tunnel state: %v", err)
 	// }
 
-	log.Println("registering domain")
-	// Register the domain with mDNS
-	if err := m.mdns.RegisterDomain(domain); err != nil {
-		// If mDNS registration fails, clean up everything
-		delete(m.tunnels, domain)
-		tunnel.stop()
-		return fmt.Errorf("failed to register mDNS: %w", err)
-	}
-
 	log.Printf("Started tunnel: %s.local -> localhost:%d (HTTPS: %v)",
 		domain, port, https)
 	return nil
 }
 
-func (m *Manager) Stop() error {
+func (m *Manager) Stop(ctx context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -163,7 +170,7 @@ func (m *Manager) Stop() error {
 	// Stop all tunnels
 	for domain, tunnel := range m.tunnels {
 		log.Printf("Stopping tunnel for domain: %s", domain)
-		if err := tunnel.stop(); err != nil {
+		if err := tunnel.stop(ctx); err != nil {
 			errs = append(errs, fmt.Errorf("failed to stop tunnel %s: %w", domain, err))
 		}
 		// Unregister from mDNS
@@ -241,7 +248,7 @@ func (m *Manager) startTunnel(t *Tunnel) error {
 	return nil
 }
 
-func (m *Manager) StopTunnel(domain string) error {
+func (m *Manager) StopTunnel(ctx context.Context, domain string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -253,7 +260,7 @@ func (m *Manager) StopTunnel(domain string) error {
 	}
 
 	// Stop the tunnel
-	if err := tunnel.stop(); err != nil {
+	if err := tunnel.stop(ctx); err != nil {
 		log.Printf("Failed to stop tunnel for domain %s: %v", domain, err)
 		return fmt.Errorf("failed to stop tunnel: %w", err)
 	}
@@ -273,7 +280,7 @@ func (m *Manager) StopTunnel(domain string) error {
 	return nil
 }
 
-func (t *Tunnel) stop() error {
+func (t *Tunnel) stop(ctx context.Context) error {
 	log.Printf("Stopping tunnel for domain: %s", t.Domain)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -316,43 +323,58 @@ func (m *Manager) ListTunnels() []map[string]interface{} {
 	return tunnelList
 }
 
-func handleConnection(clientConn net.Conn, tunnel *Tunnel) {
+func handleConnection(ctx context.Context, clientConn net.Conn, tunnel *Tunnel) {
 	defer clientConn.Close()
 	log.Println("Handling new client connection")
 
-	// Connect to the local application
-	localConn, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", tunnel.Port))
+	// Connect to the local application (with a timeout)
+	dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	localConn, err := (&net.Dialer{Timeout: 5 * time.Second}).DialContext(dialCtx, "tcp", fmt.Sprintf("localhost:%d", tunnel.Port))
 	if err != nil {
 		log.Println("Error connecting to local application:", err)
 		return
 	}
 	defer localConn.Close()
 
-	// Use a context with a timeout for the copy operations
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// Forward traffic between client and local application
+	// Forward traffic (using the context for cancellation)
 	go func() {
-		select {
-		case <-ctx.Done():
-			log.Println("Client connection timed out")
-			return
-		default:
-			if _, err := io.Copy(localConn, clientConn); err != nil {
-				log.Println("Error copying from client to local application:", err)
-			}
+		// Use io.Copy with a context-aware mechanism:
+		if _, err := io.Copy(localConn, clientConn); err != nil && !errors.Is(err, context.Canceled) {
+			log.Printf("Error copying from client to local app: %v", err)
 		}
 	}()
 
-	select {
-	case <-ctx.Done():
-		log.Println("Local connection timed out")
-		return
-	default:
-		if _, err := io.Copy(clientConn, localConn); err != nil {
-			log.Println("Error copying from local application to client:", err)
-		}
+	if _, err := io.Copy(clientConn, localConn); err != nil && !errors.Is(err, context.Canceled) {
+		log.Printf("Error copying from local app to client: %v", err)
 	}
-	log.Println("Forwarding traffic between client and local application")
+}
+
+// resolveHostname resolves a hostname, using the custom DNS server for .go domains
+func resolveHostname(hostname string) (string, error) {
+	if strings.HasSuffix(hostname, ".go") {
+		// Resolve using custom DNS server
+		m := new(dns.Msg)
+		m.SetQuestion(dns.Fqdn(hostname), dns.TypeA)
+		in, err := dns.Exchange(m, "127.0.0.1:5353") // Your DNS server address
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve hostname: %w", err)
+		}
+		if len(in.Answer) > 0 {
+			if a, ok := in.Answer[0].(*dns.A); ok {
+				return a.A.String(), nil // Return the IP address
+			}
+		}
+		return "", fmt.Errorf("hostname not found in custom DNS")
+	} else {
+		// Resolve using system DNS for other domains
+		ips, err := net.LookupHost(hostname)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve hostname: %w", err)
+		}
+		if len(ips) > 0 {
+			return ips[0], nil // Return the first IP address
+		}
+		return "", fmt.Errorf("hostname not found in system DNS")
+	}
 }
