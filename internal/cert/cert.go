@@ -56,10 +56,14 @@ func (m *CertManager) EnsureMkcertInstalled() error {
 		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
 	}
 
-	// Run the installation command
 	cmdParts := strings.Fields(installCmd)
 	if err := runAsUser(cmdParts[0], cmdParts[1:]...); err != nil {
 		return fmt.Errorf("failed to install mkcert: %w", err)
+	}
+
+	// Initialize mkcert
+	if err := runAsUser("mkcert", "-install"); err != nil {
+		return fmt.Errorf("failed to initialize mkcert: %w", err)
 	}
 
 	return nil
