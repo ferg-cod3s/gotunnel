@@ -67,3 +67,8 @@ func elevateSudo() error {
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
+
+// HasRootPrivileges checks if the current process has root privileges
+func HasRootPrivileges() bool {
+	return os.Geteuid() == 0
+}

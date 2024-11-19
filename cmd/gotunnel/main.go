@@ -6,9 +6,11 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
 
-	"github.com/johncferguson/gotunnel/internal/privilege"
+	"github.com/johncferguson/gotunnel/internal/dnsserver"
 	"github.com/johncferguson/gotunnel/internal/tunnel"
 	"github.com/urfave/cli/v2"
 )
@@ -27,17 +29,22 @@ func main() {
 			},
 		},
 		Before: func(c *cli.Context) error {
-			log.Println("Checking privileges...")
-			if !c.Bool("no-privilege-check") {
-				if err := privilege.CheckPrivileges(); err != nil {
-					log.Printf("Privilege check failed: %v", err)
-					return err
-				}
-				log.Println("Privilege check passed.")
+			// Check if we have root privileges
+			if os.Geteuid() != 0 {
+				return fmt.Errorf("gotunnel requires root privileges to modify hosts file and bind to privileged ports. Please run with sudo")
+			}
+
+			// Initialize mDNS server
+			if err := dnsserver.StartDNSServer(); err != nil {
+				return fmt.Errorf("failed to start mDNS server: %w", err)
 			}
 
 			log.Println("Initializing tunnel manager...")
 			manager = tunnel.NewManager()
+
+			// Set up cleanup on program exit
+			setupCleanup()
+
 			return nil
 		},
 		Commands: []*cli.Command{
@@ -48,47 +55,43 @@ func main() {
 					&cli.IntFlag{
 						Name:    "port",
 						Aliases: []string{"p"},
-						Value:   8000,
+						Value:   80,
 						Usage:   "Local port to tunnel",
 					},
 					&cli.StringFlag{
-						Name:     "domain",
-						Aliases:  []string{"d"},
-						Usage:    "Desired .local domain",
-						Required: true,
+						Name:    "domain",
+						Aliases: []string{"d"},
+						Usage:   "Domain name for the tunnel (will be suffixed with .local if not provided)",
 					},
 					&cli.BoolFlag{
 						Name:    "https",
-						Aliases: []string{"t"},
+						Aliases: []string{"s"},
 						Value:   true,
-						Usage:   "Enable HTTPS",
+						Usage:   "Enable HTTPS (default: true)",
+					},
+					&cli.IntFlag{
+						Name:  "https-port",
+						Value: 443,
+						Usage: "HTTPS port (default: 443)",
 					},
 				},
 				Action: StartTunnel,
 			},
 			{
-				Name:   "stop",
-				Usage:  "Stop a tunnel",
-				Action: StopTunnel,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "domain",
-						Aliases:  []string{"d"},
-						Usage:    "Domain of tunnel to stop",
-						Required: true,
-					},
-				},
+				Name:      "stop",
+				Usage:     "Stop a tunnel",
+				ArgsUsage: "[domain]",
+				Action:    StopTunnel,
 			},
 			{
-				Name:   "stopAll",
+				Name:   "list",
+				Usage:  "List active tunnels",
+				Action: ListTunnels,
+			},
+			{
+				Name:   "stop-all",
 				Usage:  "Stop all tunnels",
 				Action: StopAllTunnels,
-			},
-			{
-				Name:    "list",
-				Aliases: []string{"ls"},
-				Usage:   "List all active tunnels",
-				Action:  ListTunnels,
 			},
 		},
 	}
@@ -98,64 +101,70 @@ func main() {
 	}
 }
 
-func StartTunnel(c *cli.Context) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	// Start the tunnel using parameters from CLI flags
-	// This creates the HTTP server, sets up the proxy, and registers mDNS
-	if err := manager.StartTunnel(
-		ctx,
-		c.Int("port"),      // Local port to forward traffic to
-		c.String("domain"), // Domain name for the tunnel (e.g., myapp)
-		c.Bool("https"),    // Whether to use HTTPS
-	); err != nil {
-		return err
-	}
-
-	log.Println("Tunnel started successfully")
-
-	// Create a channel that will never receive a value
-	// This is used to keep the program running indefinitely
-	forever := make(chan struct{})
-
-	// Create a channel for OS signals
-	// Buffer size of 1 means it can hold one signal without blocking
-	sigChan := make(chan os.Signal, 1)
-
-	// Register for SIGINT (Ctrl+C) and SIGTERM (graceful shutdown) signals
-	// When either signal is received, it will be sent to sigChan
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	// Start a goroutine to handle shutdown
-	// This runs concurrently with the main thread
+func setupCleanup() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		// Wait here until a signal is received
-		<-sigChan
+		<-c
+		log.Println("\nShutting down...")
 
-		// Once a signal is received, begin shutdown
-		log.Println("Shutting down...")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
-		// Stop all tunnels, unregister mDNS, and cleanup
 		if err := manager.Stop(ctx); err != nil {
-			log.Printf("Error stopping tunnels: %v", err)
+			log.Printf("Error during shutdown: %v", err)
+			os.Exit(1)
 		}
 
-		// Exit the program with status 0 (success)
+		log.Println("Shutdown complete")
 		os.Exit(0)
 	}()
+}
 
-	// Block the main thread forever
-	// This prevents the program from exiting until a signal is received
-	// and the shutdown goroutine calls os.Exit()
-	<-forever
+func StartTunnel(c *cli.Context) error {
+	domain := c.String("domain")
+	if domain == "" {
+		return fmt.Errorf("domain is required")
+	}
 
-	// This return will never be reached due to os.Exit() in the goroutine
-	return nil
+	// Ensure domain has .local suffix
+	if !strings.HasSuffix(domain, ".local") {
+		domain = domain + ".local"
+	}
+
+	// Start the tunnel
+	ctx := context.Background()
+	err := manager.StartTunnel(ctx, c.Int("port"), domain, c.Bool("https"), c.Int("https-port"))
+	if err != nil {
+		return fmt.Errorf("failed to start tunnel: %w", err)
+	}
+
+	fmt.Printf("\nTunnel started successfully!\n")
+	fmt.Printf("Local endpoint: http://localhost:%d\n", c.Int("port"))
+	if c.Bool("https") {
+		fmt.Printf("Access your service at: https://%s\n", domain)
+	} else {
+		fmt.Printf("Access your service at: http://%s\n", domain)
+	}
+	fmt.Printf("\nDomain is accessible:\n")
+	fmt.Printf("- Locally via /etc/hosts: https://%s\n", domain)
+	fmt.Printf("- On your network via mDNS: https://%s\n", domain)
+
+	// Wait for interrupt signal
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	<-sigCh
+
+	return manager.StopTunnel(ctx, domain)
 }
 
 func StopTunnel(c *cli.Context) error {
 	ctx := context.Background()
-	return manager.StopTunnel(ctx, c.String("domain"))
+	domain := c.Args().Get(0)
+	if domain == "" {
+		return fmt.Errorf("domain is required")
+	}
+	return manager.StopTunnel(ctx, domain)
 }
 
 func StopAllTunnels(c *cli.Context) error {
