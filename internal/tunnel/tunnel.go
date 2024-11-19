@@ -45,10 +45,10 @@ type Manager struct {
 	hostsBackup string
 }
 
-func NewManager() *Manager {
+func NewManager(certManager *cert.CertManager) *Manager {
 	return &Manager{
 		tunnels:     make(map[string]*Tunnel),
-		certManager: cert.New("./certs"),
+		certManager: certManager,
 		hostsBackup: filepath.Join(os.TempDir(), fmt.Sprintf("hosts.backup.%d", time.Now().Unix())),
 	}
 }

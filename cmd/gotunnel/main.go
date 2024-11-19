@@ -10,7 +10,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/johncferguson/gotunnel/internal/cert"
 	"github.com/johncferguson/gotunnel/internal/dnsserver"
+	"github.com/johncferguson/gotunnel/internal/privilege"
 	"github.com/johncferguson/gotunnel/internal/tunnel"
 	"github.com/urfave/cli/v2"
 )
@@ -29,22 +31,24 @@ func main() {
 			},
 		},
 		Before: func(c *cli.Context) error {
-			// Check if we have root privileges
-			if os.Geteuid() != 0 {
-				return fmt.Errorf("gotunnel requires root privileges to modify hosts file and bind to privileged ports. Please run with sudo")
+			if !c.Bool("no-privilege-check") {
+				if err := privilege.CheckPrivileges(); err != nil {
+					return err
+				}
 			}
 
-			// Initialize mDNS server
-			if err := dnsserver.StartDNSServer(); err != nil {
-				return fmt.Errorf("failed to start mDNS server: %w", err)
-			}
+			// Create cert manager and tunnel manager
+			certManager := cert.New("./certs")
+			manager = tunnel.NewManager(certManager)
 
-			log.Println("Initializing tunnel manager...")
-			manager = tunnel.NewManager()
+			// Set up DNS server
+			go func() {
+				if err := dnsserver.StartDNSServer(); err != nil {
+					log.Printf("Failed to start DNS server: %v", err)
+				}
+			}()
 
-			// Set up cleanup on program exit
 			setupCleanup()
-
 			return nil
 		},
 		Commands: []*cli.Command{

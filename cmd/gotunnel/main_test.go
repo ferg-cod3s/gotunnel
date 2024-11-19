@@ -1,167 +1,198 @@
 package main
 
 import (
-	// "bytes"
-	// "context"
-	// "fmt"
+	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"strings"
+	"path/filepath"
 	"testing"
-	"unsafe"
+	"time"
 
-	"github.com/johncferguson/gotunnel/internal/tunnel" // Import your tunnel package
-	"github.com/urfave/cli/v2"
+	"github.com/johncferguson/gotunnel/internal/cert"
+	"github.com/johncferguson/gotunnel/internal/tunnel"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// Mock tunnel manager for testing
-type MockTunnelManager struct {
-	tunnels map[string]map[string]interface{}
-	started bool
-	stopped bool
-	errors  []error
+func TestMain(m *testing.M) {
+	// Setup test environment
+	tempDir, err := os.MkdirTemp("", "gotunnel-test-*")
+	if err != nil {
+		fmt.Printf("Failed to create temp dir: %v\n", err)
+		os.Exit(1)
+	}
+	defer os.RemoveAll(tempDir)
+
+	os.Exit(m.Run())
 }
 
-func (m *MockTunnelManager) StartTunnel(port int, domain string, https bool) error {
-	if len(m.errors) > 0 {
-		err := m.errors[0]
-		m.errors = m.errors[1:]
-		return err
-	}
-	m.tunnels[domain] = map[string]interface{}{
-		"domain": domain,
-		"port":   port,
-		"https":  https,
-	}
-	m.started = true
-	return nil
-}
-
-func (m *MockTunnelManager) StopTunnel(domain string) error {
-	if len(m.errors) > 0 {
-		err := m.errors[0]
-		m.errors = m.errors[1:]
-		return err
-	}
-	delete(m.tunnels, domain)
-	return nil
-}
-
-func (m *MockTunnelManager) Stop() error {
-	if len(m.errors) > 0 {
-		err := m.errors[0]
-		m.errors = m.errors[1:]
-		return err
+func setupTestServer() (*http.Server, error) {
+	// Create a test HTTP server
+	srv := &http.Server{
+		Addr: ":8080",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello from test server!")
+		}),
 	}
 
-	m.tunnels = make(map[string]map[string]interface{})
-	m.stopped = true
-	return nil
+	go func() {
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			fmt.Printf("HTTP server error: %v\n", err)
+		}
+	}()
+
+	// Wait for server to start
+	time.Sleep(100 * time.Millisecond)
+	return srv, nil
 }
 
-func (m *MockTunnelManager) ListTunnels() []map[string]interface{} {
-	var tunnels []map[string]interface{}
-	for _, t := range m.tunnels {
-		tunnels = append(tunnels, t)
-	}
-	return tunnels
-}
+func TestTunnelCreation(t *testing.T) {
+	// Create temp directory for test
+	tempDir, err := os.MkdirTemp("", "gotunnel-tunnel-test-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
 
-var originalResolveHostname = resolveHostname
+	// Setup test server
+	srv, err := setupTestServer()
+	require.NoError(t, err)
+	defer srv.Shutdown(context.Background())
 
-func mockResolveHostname(hostname string) (string, error) {
-	return "127.0.0.1", nil // Return a mock IP
-}
-
-func TestStartTunnelCommand(t *testing.T) {
-	mockManager := &MockTunnelManager{tunnels: make(map[string]map[string]interface{})}
-
-	// Correct way to use the mock
-	manager = (*tunnel.Manager)(unsafe.Pointer(mockManager)) // Type assertion with unsafe.Pointer
-
-	resolveHostname = mockResolveHostname // Assign the mock to the variable
-
-	defer func() { resolveHostname = originalResolveHostname }()
-
-	app := cli.NewApp()
-	app.Commands = []*cli.Command{
+	tests := []struct {
+		name    string
+		domain  string
+		port    int
+		https   bool
+		wantErr bool
+	}{
 		{
-			Name:   "start",
-			Action: StartTunnel,
-			Flags: []cli.Flag{
-				&cli.IntFlag{Name: "port", Value: 8000},
-				&cli.StringFlag{Name: "domain", Required: true},
-				&cli.BoolFlag{Name: "https", Value: true},
-			},
+			name:    "Basic HTTP Tunnel",
+			domain:  "test-http",
+			port:    8080,
+			https:   false,
+			wantErr: false,
+		},
+		{
+			name:    "HTTPS Tunnel",
+			domain:  "test-https",
+			port:    8080,
+			https:   true,
+			wantErr: false,
 		},
 	}
 
-	// Redirect standard output to a buffer to capture the output
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create tunnel manager
+			certManager := cert.New(filepath.Join(tempDir, "certs"))
+			manager := tunnel.NewManager(certManager)
 
-	// Run the start command
-	err := app.Run([]string{"gotunnel", "start", "--domain", "example.com"})
-	if err != nil {
-		t.Fatal(err)
-	}
+			// Start tunnel
+			ctx := context.Background()
+			err := manager.StartTunnel(ctx, tt.port, tt.domain, tt.https, tt.port+1000)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			defer manager.StopTunnel(ctx, tt.domain)
 
-	// Restore standard output
-	w.Close()
-	os.Stdout = oldStdout
-	out, _ := io.ReadAll(r)
+			// Test tunnel connection
+			protocol := "http"
+			if tt.https {
+				protocol = "https"
+			}
+			resp, err := http.Get(fmt.Sprintf("%s://%s.local:%d", protocol, tt.domain, tt.port))
+			require.NoError(t, err)
+			defer resp.Body.Close()
 
-	if !mockManager.started {
-		t.Error("StartTunnel was not called.")
-	}
-
-	expectedOutput := "Tunnel started successfully"
-	if !strings.Contains(string(out), expectedOutput) {
-		t.Errorf("Expected output to contain %q, but got %q", expectedOutput, string(out))
-	}
-
-	tunnel, exists := mockManager.tunnels["example.com"]
-
-	if !exists {
-		t.Error("Tunnel not found in manager after starting")
-	}
-
-	if tunnel["port"].(int) != 8000 {
-		t.Error("Invalid port setting for the new tunnel")
-	}
-
-	if !tunnel["https"].(bool) {
-		t.Error("Invalid https setting for the new tunnel")
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			assert.Contains(t, string(body), "Hello from test server!")
+		})
 	}
 }
 
-func TestStopTunnelCommand(t *testing.T) {
-	mockManager := &MockTunnelManager{tunnels: make(map[string]map[string]interface{})}
-	manager = (*tunnel.Manager)(unsafe.Pointer(mockManager)) // Type assertion with unsafe.Pointer
+func TestTunnelManagement(t *testing.T) {
+	// Create temp directory for test
+	tempDir, err := os.MkdirTemp("", "gotunnel-mgmt-test-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
 
-	mockManager.tunnels["test.com"] = map[string]interface{}{
-		"server": &http.Server{}, // Initialize the server in the mock
+	certManager := cert.New(filepath.Join(tempDir, "certs"))
+	manager := tunnel.NewManager(certManager)
+	ctx := context.Background()
+
+	// Test multiple tunnel creation
+	domains := []string{"test1", "test2", "test3"}
+	for i, domain := range domains {
+		err := manager.StartTunnel(ctx, 8080+i, domain, false, 9080+i)
+		require.NoError(t, err)
 	}
 
-	app := cli.NewApp()
-	app.Commands = []*cli.Command{
+	// Test tunnel listing
+	tunnels := manager.ListTunnels()
+	assert.Len(t, tunnels, len(domains))
+
+	// Test individual tunnel stopping
+	err = manager.StopTunnel(ctx, domains[0])
+	require.NoError(t, err)
+	tunnels = manager.ListTunnels()
+	assert.Len(t, tunnels, len(domains)-1)
+
+	// Test stopping all tunnels
+	err = manager.Stop(ctx)
+	require.NoError(t, err)
+	tunnels = manager.ListTunnels()
+	assert.Len(t, tunnels, 0)
+}
+
+func TestErrorHandling(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "gotunnel-error-test-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	certManager := cert.New(filepath.Join(tempDir, "certs"))
+	manager := tunnel.NewManager(certManager)
+	ctx := context.Background()
+
+	tests := []struct {
+		name    string
+		fn      func() error
+		wantErr bool
+	}{
 		{
-			Name:   "stop",
-			Action: StopTunnel,
-			Flags: []cli.Flag{
-				&cli.StringFlag{Name: "domain", Required: true},
+			name: "Invalid Port",
+			fn: func() error {
+				return manager.StartTunnel(ctx, -1, "test", false, 9080)
 			},
+			wantErr: true,
+		},
+		{
+			name: "Empty Domain",
+			fn: func() error {
+				return manager.StartTunnel(ctx, 8080, "", false, 9080)
+			},
+			wantErr: true,
+		},
+		{
+			name: "Stop Non-existent Tunnel",
+			fn: func() error {
+				return manager.StopTunnel(ctx, "nonexistent")
+			},
+			wantErr: true,
 		},
 	}
 
-	err := app.Run([]string{"gotunnel", "stop", "--domain", "test.com"}) // Change here
-	if err != nil {
-		t.Error(err)
-	}
-
-	if _, exists := mockManager.tunnels["test.com"]; exists {
-		t.Error("Tunnel was not stopped correctly")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.fn()
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }
