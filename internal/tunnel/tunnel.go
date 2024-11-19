@@ -16,7 +16,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/johncferguson/gotunnel/internal/cert"
@@ -342,15 +341,7 @@ func (m *Manager) startTunnel(t *Tunnel) error {
 
 		// Create base TCP listener with reuse options
 		config := &net.ListenConfig{
-			Control: func(network, address string, c syscall.RawConn) error {
-				var opErr error
-				if err := c.Control(func(fd uintptr) {
-					opErr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
-				}); err != nil {
-					return err
-				}
-				return opErr
-			},
+			Control: setSocketOptions,
 		}
 
 		// Explicitly bind to all interfaces
@@ -364,15 +355,7 @@ func (m *Manager) startTunnel(t *Tunnel) error {
 	} else {
 		// Create regular HTTP listener on configured port with reuse options
 		config := &net.ListenConfig{
-			Control: func(network, address string, c syscall.RawConn) error {
-				var opErr error
-				if err := c.Control(func(fd uintptr) {
-					opErr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
-				}); err != nil {
-					return err
-				}
-				return opErr
-			},
+			Control: setSocketOptions,
 		}
 
 		// Explicitly bind to all interfaces
