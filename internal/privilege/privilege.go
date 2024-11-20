@@ -9,7 +9,7 @@ import (
 )
 
 func CheckPrivileges() error {
-	log.Println("Checking privileges...")
+	// log.Println("Checking privileges...")
 	switch runtime.GOOS {
 	case "windows":
 		return checkWindowsPrivileges()
@@ -20,10 +20,10 @@ func CheckPrivileges() error {
 
 func checkUnixPrivileges() error {
 	if os.Geteuid() != 0 {
-		log.Println("Privilege check failed: must be run with sudo or as root")
+		// log.Println("Privilege check failed: must be run with sudo or as root")
 		return fmt.Errorf("this program must be run with sudo or as root")
 	}
-	log.Println("Privilege check passed for Unix")
+	// log.Println("Privilege check passed for Unix")
 	return nil
 }
 
@@ -33,7 +33,7 @@ func checkWindowsPrivileges() error {
 		log.Println("Privilege check failed: must be run as Administrator")
 		return fmt.Errorf("this program must be run as Administrator")
 	}
-	log.Println("Privilege check passed for Windows")
+	// log.Println("Privilege check passed for Windows")
 	return nil
 }
 

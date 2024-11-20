@@ -30,9 +30,9 @@ func (s *MDNSServer) RegisterDomain(domain string) error {
 		name = name[:len(name)-6]
 	}
 
-	log.Printf("Registering domain: %s", name)
+	// log.Printf("Registering domain: %s", name)
 	if _, exists := s.services[name]; exists {
-		log.Printf("Service for domain %s is already registered, unregistering it first", name)
+		// log.Printf("Service for domain %s is already registered, unregistering it first", name)
 		if err := s.UnregisterDomain(name); err != nil {
 			return fmt.Errorf("failed to unregister existing service: %w", err)
 		}
@@ -47,7 +47,7 @@ func (s *MDNSServer) RegisterDomain(domain string) error {
 		nil,
 	)
 	if err != nil {
-		log.Printf("Failed to register mDNS service for domain %s: %v", name, err)
+		// log.Printf("Failed to register mDNS service for domain %s: %v", name, err)
 		return fmt.Errorf("failed to register mDNS service: %w", err)
 	}
 
@@ -60,11 +60,11 @@ func (s *MDNSServer) UnregisterDomain(domain string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	log.Printf("Unregistering domain: %s", domain)
+	// log.Printf("Unregistering domain: %s", domain)
 	if server, exists := s.services[domain]; exists {
 		server.Shutdown()
 		delete(s.services, domain)
-		log.Printf("Unregistered mDNS service: %s", domain)
+		// log.Printf("Unregistered mDNS service: %s", domain)
 	}
 	return nil
 }
@@ -94,5 +94,5 @@ func (s *MDNSServer) DiscoverServices() {
 		log.Printf("Failed to browse HTTP services: %v", err)
 	}
 	time.Sleep(time.Second * 1)
-	log.Println("Done discovering services")
+	// log.Println("Done discovering services")
 }

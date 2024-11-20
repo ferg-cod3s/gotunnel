@@ -13,7 +13,6 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -46,10 +45,14 @@ type Manager struct {
 }
 
 func NewManager(certManager *cert.CertManager) *Manager {
+	// Initialize DNS server when creating a new manager
+	if err := dnsserver.StartDNSServer(); err != nil {
+		log.Printf("Warning: Failed to initialize DNS server: %v", err)
+	}
+
 	return &Manager{
 		tunnels:     make(map[string]*Tunnel),
 		certManager: certManager,
-		hostsBackup: filepath.Join(os.TempDir(), fmt.Sprintf("hosts.backup.%d", time.Now().Unix())),
 	}
 }
 
@@ -64,7 +67,6 @@ func (m *Manager) backupHostsFile() error {
 		return fmt.Errorf("failed to create hosts backup: %w", err)
 	}
 
-	log.Printf("Created hosts file backup at: %s", m.hostsBackup)
 	return nil
 }
 
@@ -83,8 +85,6 @@ func (m *Manager) restoreHostsFile() error {
 		return fmt.Errorf("failed to restore hosts file: %w", err)
 	}
 
-	log.Printf("Restored hosts file from backup: %s", m.hostsBackup)
-
 	// Clean up backup file
 	if err := os.Remove(m.hostsBackup); err != nil {
 		log.Printf("Warning: Failed to remove backup file: %v", err)
@@ -97,11 +97,8 @@ func (m *Manager) StartTunnel(ctx context.Context, port int, domain string, http
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	log.Printf("Attempting to start tunnel for domain: %s on port: %d (HTTPS: %v)", domain, port, https)
-
 	// Prevent duplicate tunnels for the same domain
 	if _, exists := m.tunnels[domain]; exists {
-		log.Printf("Tunnel for domain %s already exists", domain)
 		return fmt.Errorf("tunnel for domain %s already exists", domain)
 	}
 
@@ -117,21 +114,18 @@ func (m *Manager) StartTunnel(ctx context.Context, port int, domain string, http
 		Domain:    domain,
 		TargetIP:  "127.0.0.1",
 		HTTPS:     https,
-		done:      make(chan struct{}), // Channel for cleanup signaling
+		done:      make(chan struct{}), // Initialize the done channel
 	}
 
 	// Ensure the SSL/TLS certificate is available
 	if https {
-		log.Printf("Ensuring certificate for domain: %s", domain)
 		cert, err := m.certManager.EnsureCert(domain)
 		if err != nil {
-			log.Printf("Failed to ensure certificate for domain %s: %v", domain, err)
 			return fmt.Errorf("failed to ensure certificate: %w", err)
 		}
 		tunnel.Cert = cert
 	}
 
-	log.Printf("Starting tunnel for domain: %s", domain)
 	if err := m.startTunnel(tunnel); err != nil {
 		return fmt.Errorf("failed to start tunnel: %w", err)
 	}
@@ -144,7 +138,7 @@ func (m *Manager) StartTunnel(ctx context.Context, port int, domain string, http
 	if err := dnsserver.RegisterDomain(domain, servicePort); err != nil {
 		// Stop the tunnel we just started since mDNS registration failed
 		if stopErr := tunnel.stop(ctx); stopErr != nil {
-			log.Printf("Warning: Failed to stop tunnel after mDNS registration failed: %v", stopErr)
+			return fmt.Errorf("failed to stop tunnel after mDNS registration failed: %w", stopErr)
 		}
 		return fmt.Errorf("failed to register domain with mDNS: %w", err)
 	}
@@ -155,12 +149,10 @@ func (m *Manager) StartTunnel(ctx context.Context, port int, domain string, http
 	// Create hosts file backup before first modification
 	if len(m.tunnels) == 1 {
 		if err := m.backupHostsFile(); err != nil {
-			log.Printf("Warning: Failed to backup hosts file: %v", err)
+			return fmt.Errorf("failed to backup hosts file: %w", err)
 		}
 	}
 
-	log.Printf("Started tunnel: %s -> localhost:%d (HTTPS: %v, HTTPS Port: %d)",
-		domain, port, https, httpsPort)
 	return nil
 }
 
@@ -168,11 +160,9 @@ func (m *Manager) Stop(ctx context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	log.Println("Stopping all tunnels")
 	var errs []error
 	// Stop all tunnels
 	for domain, tunnel := range m.tunnels {
-		log.Printf("Stopping tunnel for domain: %s", domain)
 		if err := tunnel.stop(ctx); err != nil {
 			errs = append(errs, fmt.Errorf("failed to stop tunnel %s: %w", domain, err))
 		}
@@ -188,7 +178,6 @@ func (m *Manager) Stop(ctx context.Context) error {
 
 	// If there were any errors, return them combined
 	if len(errs) > 0 {
-		log.Printf("Errors occurred while stopping tunnels: %v", errs)
 		return fmt.Errorf("errors during shutdown: %v", errs)
 	}
 
@@ -201,45 +190,42 @@ func (m *Manager) StopTunnel(ctx context.Context, domain string) error {
 
 	tunnel, exists := m.tunnels[domain]
 	if !exists {
-		log.Printf("Tunnel for domain %s does not exist", domain)
 		return fmt.Errorf("tunnel for domain %s does not exist", domain)
 	}
 
 	// Stop the tunnel
 	if err := tunnel.stop(ctx); err != nil {
-		log.Printf("Failed to stop tunnel for domain %s: %v", domain, err)
 		return fmt.Errorf("failed to stop tunnel: %w", err)
 	}
 
 	// Unregister from mDNS
 	if err := dnsserver.UnregisterDomain(domain); err != nil {
-		log.Printf("Warning: Failed to unregister domain from mDNS: %v", err)
+		return fmt.Errorf("failed to unregister domain from mDNS: %w", err)
 	}
 
 	// Remove from tunnels map
 	delete(m.tunnels, domain)
-	log.Printf("Stopped tunnel: %s", domain)
 	return nil
 }
 
 func (t *Tunnel) stop(ctx context.Context) error {
 	if t.server != nil {
 		if err := t.server.Shutdown(ctx); err != nil {
-			log.Printf("Warning: error shutting down server: %v", err)
+			return fmt.Errorf("error shutting down server: %w", err)
 		}
 	}
 
 	if t.listener != nil {
 		// Force close the listener to unblock any pending accepts
 		if err := t.listener.Close(); err != nil {
-			log.Printf("Warning: error closing listener: %v", err)
+			return fmt.Errorf("error closing listener: %w", err)
 		}
 		t.listener = nil
 	}
 
 	// Remove from hosts file
 	if err := removeFromHostsFile(t.Domain); err != nil {
-		log.Printf("Warning: Failed to remove from hosts file: %v", err)
+		return fmt.Errorf("failed to remove from hosts file: %w", err)
 	}
 
 	close(t.done)
@@ -265,7 +251,6 @@ func (m *Manager) ListTunnels() []map[string]interface{} {
 
 func handleConnection(ctx context.Context, clientConn net.Conn, tunnel *Tunnel) {
 	defer clientConn.Close()
-	log.Println("Handling new client connection")
 
 	// Connect to the local application (with a timeout)
 	dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -291,22 +276,19 @@ func handleConnection(ctx context.Context, clientConn net.Conn, tunnel *Tunnel) 
 }
 
 func (m *Manager) startTunnel(t *Tunnel) error {
-	log.Printf("Starting tunnel for domain: %s", t.Domain)
-
 	// Get the machine's network IP for the proxy
 	ip := dnsserver.GetOutboundIP()
 	t.TargetIP = ip.String()
-	log.Printf("Using target IP for proxy: %s", t.TargetIP)
 
 	// Update /etc/hosts file
 	if err := updateHostsFile(t.Domain); err != nil {
-		log.Printf("Warning: Failed to update hosts file: %v", err)
+		return fmt.Errorf("failed to update hosts file: %w", err)
 	}
 
 	// Create reverse proxy
 	proxy := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
-			targetURL := fmt.Sprintf("http://%s:%d", t.TargetIP, t.Port)
+			targetURL := fmt.Sprintf("http://127.0.0.1:%d", t.Port)
 			target, _ := url.Parse(targetURL)
 			req.URL.Scheme = target.Scheme
 			req.URL.Host = target.Host
@@ -314,21 +296,36 @@ func (m *Manager) startTunnel(t *Tunnel) error {
 		},
 	}
 
+	// Create the listener before the server
+	var err error
+	var baseListener net.Listener
+
+	// Create listener with reuse options
+	config := &net.ListenConfig{
+		Control: setSocketOptions,
+	}
+
+	// Create server first with proper configuration
 	t.server = &http.Server{
 		Handler: proxy,
 	}
 
-	var err error
+	// Initialize done channel
+	t.done = make(chan struct{})
 
+	// Explicitly bind to all interfaces with the correct port
 	if t.HTTPS {
-		log.Printf("Starting HTTPS tunnel for domain %s on port %d", t.Domain, t.HTTPSPort)
+		baseListener, err = config.Listen(context.Background(), "tcp", fmt.Sprintf("0.0.0.0:%d", t.HTTPSPort))
+		if err != nil {
+			return fmt.Errorf("failed to create HTTPS listener: %w", err)
+		}
 
 		// Create TLS config
 		tlsConfig := &tls.Config{
 			Certificates: []tls.Certificate{*t.Cert},
 			MinVersion:   tls.VersionTLS12,
 			ServerName:   t.Domain,
-			ClientAuth:   tls.NoClientCert, // Changed from RequestClientCert since we don't need client certs
+			ClientAuth:   tls.NoClientCert,
 			CipherSuites: []uint16{
 				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
@@ -336,41 +333,37 @@ func (m *Manager) startTunnel(t *Tunnel) error {
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			},
 			PreferServerCipherSuites: true,
-			NextProtos:               []string{"h2", "http/1.1"}, // Added HTTP/2 support
+			NextProtos:               []string{"h2", "http/1.1"},
 		}
 
-		// Create base TCP listener with reuse options
-		config := &net.ListenConfig{
-			Control: setSocketOptions,
-		}
-
-		// Explicitly bind to all interfaces
-		baseListener, err := config.Listen(context.Background(), "tcp", fmt.Sprintf("0.0.0.0:%d", t.HTTPSPort))
-		if err != nil {
-			return fmt.Errorf("failed to create base listener: %w", err)
-		}
-
-		// Wrap with TLS
 		t.listener = tls.NewListener(baseListener, tlsConfig)
 	} else {
-		// Create regular HTTP listener on configured port with reuse options
-		config := &net.ListenConfig{
-			Control: setSocketOptions,
-		}
-
-		// Explicitly bind to all interfaces
-		t.listener, err = config.Listen(context.Background(), "tcp", fmt.Sprintf("0.0.0.0:%d", t.Port))
+		baseListener, err = config.Listen(context.Background(), "tcp", fmt.Sprintf("0.0.0.0:%d", t.Port))
 		if err != nil {
-			return fmt.Errorf("failed to create listener: %w", err)
+			return fmt.Errorf("failed to create HTTP listener: %w", err)
 		}
+		t.listener = baseListener
 	}
 
-	// Start server in goroutine
+	// Start server in goroutine with proper error handling
+	serverErrChan := make(chan error, 1)
 	go func() {
-		if err := t.server.Serve(t.listener); err != http.ErrServerClosed {
+		if err := t.server.Serve(t.listener); err != nil && err != http.ErrServerClosed {
 			log.Printf("Server error: %v", err)
+			serverErrChan <- err
 		}
+		close(serverErrChan)
 	}()
+
+	// Wait a short time to catch immediate startup errors
+	select {
+	case err := <-serverErrChan:
+		if err != nil {
+			return fmt.Errorf("server startup error: %w", err)
+		}
+	case <-time.After(100 * time.Millisecond):
+		// Server started successfully
+	}
 
 	return nil
 }
@@ -379,12 +372,10 @@ func (m *Manager) StopAll(ctx context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	log.Printf("Stopping all tunnels...")
-
 	// Stop each tunnel
 	for domain, _ := range m.tunnels {
 		if err := m.StopTunnel(ctx, domain); err != nil {
-			log.Printf("Error stopping tunnel %s: %v", domain, err)
+			return fmt.Errorf("error stopping tunnel %s: %w", domain, err)
 		}
 	}
 
@@ -395,7 +386,16 @@ func (m *Manager) StopAll(ctx context.Context) error {
 }
 
 func (m *Manager) Close(ctx context.Context) error {
-	return m.StopAll(ctx)
+	if err := m.StopAll(ctx); err != nil {
+		return fmt.Errorf("failed to stop all tunnels: %w", err)
+	}
+
+	// Shutdown DNS server when closing manager
+	if err := dnsserver.Shutdown(); err != nil {
+		log.Printf("Warning: Failed to shutdown DNS server: %v", err)
+	}
+
+	return nil
 }
 
 // updateHostsFile adds or updates an entry in /etc/hosts

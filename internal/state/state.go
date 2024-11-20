@@ -14,6 +14,9 @@ type TunnelState struct {
 	HTTPS  bool   `yaml:"https"`
 }
 
+// For testing purposes
+var getStateFileFunc = getStateFile
+
 func getStateFile() string {
 	homeDir, _ := os.UserHomeDir()
 	return filepath.Join(homeDir, ".gotunnel", "tunnels.yaml")
