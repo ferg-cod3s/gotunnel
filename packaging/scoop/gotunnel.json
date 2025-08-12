@@ -1,0 +1,40 @@
+{
+    "version": "0.1.0-beta",
+    "description": "Create secure local tunnels for development without root privileges",
+    "homepage": "https://github.com/johncferguson/gotunnel",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/johncferguson/gotunnel/releases/download/v0.1.0-beta/gotunnel-v0.1.0-beta-windows-amd64.exe",
+            "hash": "PLACEHOLDER_SHA256"
+        },
+        "arm64": {
+            "url": "https://github.com/johncferguson/gotunnel/releases/download/v0.1.0-beta/gotunnel-v0.1.0-beta-windows-arm64.exe",
+            "hash": "PLACEHOLDER_SHA256"
+        }
+    },
+    "bin": [
+        [
+            "gotunnel-v0.1.0-beta-windows-amd64.exe",
+            "gotunnel"
+        ]
+    ],
+    "checkver": {
+        "github": "https://github.com/johncferguson/gotunnel"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/johncferguson/gotunnel/releases/download/v$version/gotunnel-v$version-windows-amd64.exe"
+            },
+            "arm64": {
+                "url": "https://github.com/johncferguson/gotunnel/releases/download/v$version/gotunnel-v$version-windows-arm64.exe"
+            }
+        }
+    },
+    "post_install": [
+        "Write-Host 'gotunnel installed successfully!' -ForegroundColor Green",
+        "Write-Host 'Try: gotunnel --help' -ForegroundColor Yellow",
+        "Write-Host 'Example: gotunnel --proxy=builtin start --port 3000 --domain myapp' -ForegroundColor Cyan"
+    ]
+}

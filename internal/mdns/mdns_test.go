@@ -18,25 +18,26 @@ func TestNew(t *testing.T) {
 func TestRegisterAndUnregisterDomain(t *testing.T) {
 	server := New()
 	domain := "test-service.local"
+	serviceName := "test-service" // The service is stored without .local suffix
 
 	// Test registration
 	err := server.RegisterDomain(domain)
 	require.NoError(t, err)
 
-	// Verify service is registered
+	// Verify service is registered (service is stored without .local suffix)
 	server.mu.RLock()
-	service, exists := server.services[domain]
+	service, exists := server.services[serviceName]
 	server.mu.RUnlock()
 	assert.True(t, exists)
 	assert.NotNil(t, service)
 
-	// Test unregistration
-	err = server.UnregisterDomain(domain)
+	// Test unregistration (use serviceName without .local)
+	err = server.UnregisterDomain(serviceName)
 	require.NoError(t, err)
 
 	// Verify service is unregistered
 	server.mu.RLock()
-	_, exists = server.services[domain]
+	_, exists = server.services[serviceName]
 	server.mu.RUnlock()
 	assert.False(t, exists)
 }
@@ -73,8 +74,12 @@ func TestRegisterDomainValidation(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				if err == nil {
-					// Clean up
-					_ = server.UnregisterDomain(tt.domain)
+					// Clean up - use the service name without .local suffix
+					serviceName := tt.domain
+					if len(serviceName) > 6 && serviceName[len(serviceName)-6:] == ".local" {
+						serviceName = serviceName[:len(serviceName)-6]
+					}
+					_ = server.UnregisterDomain(serviceName)
 				}
 			}
 		})
@@ -84,20 +89,30 @@ func TestRegisterDomainValidation(t *testing.T) {
 func TestDiscoverServices(t *testing.T) {
 	server := New()
 	domain := "test-discover.local"
+	serviceName := "test-discover"
 
 	// Register a service
 	err := server.RegisterDomain(domain)
 	require.NoError(t, err)
-	defer server.UnregisterDomain(domain)
+	defer server.UnregisterDomain(serviceName) // Use service name without .local
 
 	// Give some time for the service to be advertised
 	time.Sleep(100 * time.Millisecond)
 
-	// Test discovery
-	go server.DiscoverServices()
+	// Test discovery (run in background with timeout to avoid hanging)
+	done := make(chan bool)
+	go func() {
+		server.DiscoverServices()
+		done <- true
+	}()
 
-	// Give some time for discovery
-	time.Sleep(500 * time.Millisecond)
+	// Give limited time for discovery
+	select {
+	case <-done:
+		// Discovery completed
+	case <-time.After(1 * time.Second):
+		// Timeout - this is acceptable for test
+	}
 }
 
 func TestConcurrentOperations(t *testing.T) {
@@ -124,11 +139,11 @@ func TestConcurrentOperations(t *testing.T) {
 	assert.Equal(t, numServices, len(server.services))
 	server.mu.RUnlock()
 
-	// Unregister services concurrently
+	// Unregister services concurrently (use service names without .local)
 	for i := 0; i < numServices; i++ {
 		go func(i int) {
-			domain := fmt.Sprintf("test-concurrent-%d.local", i)
-			errCh <- server.UnregisterDomain(domain)
+			serviceName := fmt.Sprintf("test-concurrent-%d", i) // Remove .local suffix
+			errCh <- server.UnregisterDomain(serviceName)
 		}(i)
 	}
 

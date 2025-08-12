@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>gotunnel</id>
+    <version>0.1.0-beta</version>
+    <packageSourceUrl>https://github.com/johncferguson/gotunnel</packageSourceUrl>
+    <owners>johncferguson</owners>
+    <title>gotunnel - Secure Local Tunnels</title>
+    <authors>John Ferguson</authors>
+    <projectUrl>https://github.com/johncferguson/gotunnel</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/johncferguson/gotunnel/main/docs/icon.png</iconUrl>
+    <copyright>Copyright 2024 John Ferguson</copyright>
+    <licenseUrl>https://github.com/johncferguson/gotunnel/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/johncferguson/gotunnel</projectSourceUrl>
+    <docsUrl>https://github.com/johncferguson/gotunnel/blob/main/README.md</docsUrl>
+    <bugTrackerUrl>https://github.com/johncferguson/gotunnel/issues</bugTrackerUrl>
+    <tags>tunnel development proxy https http local network enterprise</tags>
+    <summary>Create secure local tunnels for development without root privileges</summary>
+    <description><![CDATA[
+gotunnel provides secure HTTP/HTTPS tunnels for local development with built-in proxy capabilities, OpenTelemetry observability, and enterprise-friendly configuration options.
+
+## Features
+
+- **No Root Required**: Works without administrator privileges
+- **Built-in HTTP Proxy**: No external dependencies needed
+- **Enterprise Ready**: Works with corporate firewalls and proxy settings
+- **Multiple Backends**: Support for nginx, Caddy, or built-in proxy
+- **OpenTelemetry**: Full observability with traces, metrics, and logs
+- **Cross-Platform**: Native support for macOS, Linux, and Windows
+- **Docker Ready**: Full containerization support with Compose
+- **Auto-Discovery**: mDNS support for network-wide access
+
+## Quick Start
+
+Start a tunnel (no privileges required):
+```
+gotunnel --proxy=builtin --no-privilege-check start --port 3000 --domain myapp --https=false
+```
+
+Access your app:
+- Local: http://localhost:3000
+- Tunnel: http://myapp.local
+
+## Documentation
+
+Full documentation and examples available at: https://github.com/johncferguson/gotunnel
+    ]]></description>
+    <releaseNotes>Initial release with comprehensive deployment infrastructure</releaseNotes>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

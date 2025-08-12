@@ -1,0 +1,2 @@
+gotunnel usr/bin
+configs/gotunnel.example.yaml usr/share/gotunnel/

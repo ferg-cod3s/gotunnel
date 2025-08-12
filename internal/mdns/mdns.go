@@ -25,9 +25,17 @@ func (s *MDNSServer) RegisterDomain(domain string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if domain == "" {
+		return fmt.Errorf("domain cannot be empty")
+	}
+
 	name := domain
 	if len(name) > 6 && name[len(name)-6:] == ".local" {
 		name = name[:len(name)-6]
+	}
+	
+	if name == "" {
+		return fmt.Errorf("domain name cannot be empty after removing .local suffix")
 	}
 
 	// log.Printf("Registering domain: %s", name)
@@ -42,7 +50,7 @@ func (s *MDNSServer) RegisterDomain(domain string) error {
 		name,
 		"_http._tcp",
 		"local.",
-		443,
+		8443,
 		[]string{"path=/"},
 		nil,
 	)

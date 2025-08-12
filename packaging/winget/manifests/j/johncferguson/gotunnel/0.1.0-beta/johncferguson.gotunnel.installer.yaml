@@ -1,0 +1,28 @@
+# Created with YamlCreate.ps1 v2.2.0 $debug=QUSU.CRLF.7-2-6.Win32NT
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.4.0.schema.json
+
+PackageIdentifier: johncferguson.gotunnel
+PackageVersion: 0.1.0-beta
+Platform:
+- Windows.Desktop
+MinimumOSVersion: 10.0.0.0
+InstallerType: portable
+Scope: user
+InstallModes:
+- silent
+UpgradeBehavior: install
+Commands:
+- gotunnel
+FileExtensions:
+- yaml
+- yml
+ReleaseDate: 2024-01-01
+Installers:
+- Architecture: x64
+  InstallerUrl: https://github.com/johncferguson/gotunnel/releases/download/v0.1.0-beta/gotunnel-v0.1.0-beta-windows-amd64.exe
+  InstallerSha256: PLACEHOLDER_SHA256
+- Architecture: arm64
+  InstallerUrl: https://github.com/johncferguson/gotunnel/releases/download/v0.1.0-beta/gotunnel-v0.1.0-beta-windows-arm64.exe
+  InstallerSha256: PLACEHOLDER_SHA256
+ManifestType: installer
+ManifestVersion: 1.4.0

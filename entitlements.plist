@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Allow network access for HTTP/HTTPS proxy functionality -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    
+    <!-- Allow network server capabilities for proxy and DNS services -->
+    <key>com.apple.security.network.server</key>
+    <true/>
+    
+    <!-- Allow outgoing network connections -->
+    <key>com.apple.security.network.outgoing</key>
+    <true/>
+    
+    <!-- Allow incoming network connections for proxy functionality -->
+    <key>com.apple.security.network.incoming</key>
+    <true/>
+    
+    <!-- Allow file system access for certificate and configuration management -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    
+    <!-- Allow access to user's home directory for configuration files -->
+    <key>com.apple.security.files.user-home</key>
+    <true/>
+    
+    <!-- Allow access to system directories for hosts file modification -->
+    <key>com.apple.security.files.system-read-write</key>
+    <true/>
+    
+    <!-- Disable library validation to allow dynamic loading -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+    
+    <!-- Allow JIT compilation (useful for any embedded interpreters) -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    
+    <!-- Allow unsigned executable memory (needed for some network operations) -->
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    
+    <!-- Allow debugging for development builds -->
+    <key>com.apple.security.cs.debugger</key>
+    <true/>
+    
+    <!-- Request root privileges when needed (for privileged ports and hosts file) -->
+    <key>com.apple.security.temporary-exception.authorization</key>
+    <dict>
+        <key>authorization</key>
+        <string>system.privilege.admin</string>
+        <key>reason</key>
+        <string>gotunnel needs administrator privileges to bind to privileged ports (80/443) and modify the hosts file for local tunnel functionality.</string>
+    </dict>
+</dict>
+</plist>

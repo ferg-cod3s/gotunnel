@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>gotunnel Example App</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            padding: 2rem;
+            border-radius: 1rem;
+            backdrop-filter: blur(10px);
+        }
+        h1 { margin-top: 0; }
+        .status { 
+            background: rgba(46, 204, 113, 0.3);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+        .info {
+            background: rgba(52, 152, 219, 0.3);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+        code {
+            background: rgba(0,0,0,0.3);
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.25rem;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+        .examples {
+            background: rgba(0,0,0,0.2);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+        .examples pre {
+            background: rgba(0,0,0,0.3);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚇 gotunnel Example App</h1>
+        
+        <div class="status">
+            ✅ <strong>Tunnel Active!</strong> Your gotunnel proxy is working correctly.
+        </div>
+
+        <div class="info">
+            <h2>Connection Info</h2>
+            <p><strong>Host:</strong> <code id="hostname"></code></p>
+            <p><strong>User Agent:</strong> <code id="useragent"></code></p>
+            <p><strong>Time:</strong> <code id="timestamp"></code></p>
+        </div>
+
+        <div class="examples">
+            <h2>Example Commands</h2>
+            <p>Here are some commands you can try with gotunnel:</p>
+            
+            <h3>Basic HTTP Tunnel (No Privileges)</h3>
+            <pre><code># Start a tunnel for a local app on port 3000
+gotunnel --proxy=builtin --no-privilege-check start \\
+  --port 3000 --domain myapp --https=false</code></pre>
+
+            <h3>With Custom Proxy Ports</h3>
+            <pre><code># Use custom proxy ports (useful in enterprise)
+gotunnel --proxy=builtin --proxy-http-port 8080 \\
+  --no-privilege-check start --port 3000 --domain myapp</code></pre>
+
+            <h3>Generate nginx Config</h3>
+            <pre><code># Generate nginx configuration instead of running proxy
+gotunnel --proxy=config start --port 3000 --domain myapp</code></pre>
+
+            <h3>Multiple Tunnels</h3>
+            <pre><code># Terminal 1: Frontend
+gotunnel --proxy=builtin start --port 3000 --domain frontend
+
+# Terminal 2: API  
+gotunnel --proxy=builtin start --port 8080 --domain api
+
+# Terminal 3: Database Admin
+gotunnel --proxy=builtin start --port 5432 --domain pgadmin</code></pre>
+        </div>
+
+        <div class="info">
+            <h2>Features</h2>
+            <ul>
+                <li>✅ No root privileges required</li>
+                <li>✅ Built-in HTTP proxy</li>
+                <li>✅ Enterprise-friendly</li>
+                <li>✅ Multiple proxy backends (nginx, caddy)</li>
+                <li>✅ OpenTelemetry observability</li>
+                <li>✅ Cross-platform support</li>
+                <li>✅ Docker ready</li>
+            </ul>
+        </div>
+
+        <p><a href="https://github.com/johncferguson/gotunnel" style="color: #f39c12;">📚 Documentation & Source Code</a></p>
+    </div>
+
+    <script>
+        document.getElementById('hostname').textContent = window.location.hostname;
+        document.getElementById('useragent').textContent = navigator.userAgent;
+        document.getElementById('timestamp').textContent = new Date().toISOString();
+    </script>
+</body>
+</html>

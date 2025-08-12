@@ -9,24 +9,10 @@ import (
 )
 
 func TestCheckPrivileges(t *testing.T) {
-	// Skip if running tests as root/admin to avoid false positives
-	if HasRootPrivileges() {
-		t.Skip("Skipping test as it's running with root/admin privileges")
-	}
-
 	err := CheckPrivileges()
-	if runtime.GOOS == "windows" {
-		// On Windows, the test behavior depends on whether it's run as admin
-		if HasRootPrivileges() {
-			assert.NoError(t, err)
-		} else {
-			assert.Error(t, err)
-		}
-	} else {
-		// On Unix systems, should fail when not root
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "must be run with sudo or as root")
-	}
+	// Since we've disabled privilege checks to allow non-root execution,
+	// CheckPrivileges should always return nil
+	assert.NoError(t, err)
 }
 
 func TestHasRootPrivileges(t *testing.T) {
@@ -49,12 +35,8 @@ func TestCheckUnixPrivileges(t *testing.T) {
 	}
 
 	err := checkUnixPrivileges()
-	if os.Geteuid() == 0 {
-		assert.NoError(t, err)
-	} else {
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "must be run with sudo or as root")
-	}
+	// Since we've disabled privilege checks, this should always return nil
+	assert.NoError(t, err)
 }
 
 func TestCheckWindowsPrivileges(t *testing.T) {
@@ -63,8 +45,8 @@ func TestCheckWindowsPrivileges(t *testing.T) {
 	}
 
 	err := checkWindowsPrivileges()
-	// Log the result since it depends on how the test is run
-	t.Logf("Windows privilege check result: %v", err)
+	// Since we've disabled privilege checks, this should always return nil
+	assert.NoError(t, err)
 }
 
 func TestElevatePrivileges(t *testing.T) {
@@ -90,9 +72,9 @@ func TestPrivilegeChecksIntegration(t *testing.T) {
 	isRoot := HasRootPrivileges()
 	err := CheckPrivileges()
 
-	if isRoot {
-		assert.NoError(t, err, "Privilege check should pass when running as root/admin")
-	} else {
-		assert.Error(t, err, "Privilege check should fail when not running as root/admin")
-	}
+	// Since we've disabled privilege checks, this should always pass
+	assert.NoError(t, err, "Privilege check should always pass now")
+	
+	// Just test that HasRootPrivileges doesn't panic
+	t.Logf("Has root privileges: %v", isRoot)
 }

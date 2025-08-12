@@ -11,6 +11,11 @@ import (
 	"strings"
 )
 
+func isMkcertInstalled() bool {
+	_, err := exec.LookPath("mkcert")
+	return err == nil
+}
+
 type CertManager struct {
 	certsDir string
 }
@@ -27,43 +32,21 @@ func getCurrentUser() (*user.User, error) {
 
 func (m *CertManager) EnsureMkcertInstalled() error {
 	// Check if mkcert is already installed
-	_, err := exec.LookPath("mkcert")
-	if err == nil {
+	if isMkcertInstalled() {
 		return nil
 	}
 
 	// Install mkcert based on the platform
 	var installCmd string
-	switch runtime.GOOS {
-	case "darwin":
-		installCmd = "brew install mkcert"
-	case "linux":
-		// Add more package managers as needed
-		if _, err := exec.LookPath("apt-get"); err == nil {
-			installCmd = "apt-get install -y mkcert"
-		} else if _, err := exec.LookPath("yum"); err == nil {
-			installCmd = "yum install -y mkcert"
-		} else {
-			return fmt.Errorf("no supported package manager found")
-		}
-	case "windows":
-		if _, err := exec.LookPath("choco"); err == nil {
-			installCmd = "choco install mkcert"
-		} else {
-			return fmt.Errorf("chocolatey package manager not found")
-		}
-	default:
-		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
+	if runtime.GOOS == "windows" {
+		installCmd = "wsl nix-env -iA nixpkgs.mkcert"
+	} else {
+		installCmd = "nix-env -iA nixpkgs.mkcert"
 	}
 
 	cmdParts := strings.Fields(installCmd)
 	if err := runAsUser(cmdParts[0], cmdParts[1:]...); err != nil {
 		return fmt.Errorf("failed to install mkcert: %w", err)
-	}
-
-	// Initialize mkcert
-	if err := runAsUser("mkcert", "-install"); err != nil {
-		return fmt.Errorf("failed to initialize mkcert: %w", err)
 	}
 
 	return nil

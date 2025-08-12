@@ -1,0 +1,23 @@
+Package: gotunnel
+Version: 0.1.0-beta
+Section: net
+Priority: optional
+Architecture: amd64
+Maintainer: John Ferguson <john@fergify.work>
+Description: Create secure local tunnels for development without root privileges
+ gotunnel provides secure HTTP/HTTPS tunnels for local development with built-in
+ proxy capabilities, OpenTelemetry observability, and enterprise-friendly
+ configuration options.
+ .
+ Features:
+  - No root privileges required
+  - Built-in HTTP proxy
+  - Enterprise-ready with corporate firewall support
+  - Multiple backend support (nginx, Caddy, built-in)
+  - Full OpenTelemetry observability
+  - Cross-platform support
+  - Docker and Kubernetes ready
+  - Automatic mDNS discovery
+Homepage: https://github.com/johncferguson/gotunnel
+Depends: libc6 (>= 2.17)
+Recommends: ca-certificates

@@ -2,7 +2,6 @@ package dnsserver
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"strings"
 	"sync"
@@ -46,12 +45,6 @@ func StartDNSServer() error {
 
 // getOutboundIP gets the preferred outbound IP of this machine
 func GetOutboundIP() net.IP {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		log.Printf("Warning: Failed to get network interfaces: %v", err)
-		return net.ParseIP("127.0.0.1")
-	}
-
 	// Create a temporary UDP connection to determine the preferred outbound IP
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
@@ -78,24 +71,27 @@ func RegisterDomain(domain string, port int) error {
 	host = strings.TrimSuffix(host, ".")      // Remove any trailing dot
 	host = strings.TrimSuffix(host, ".local") // Remove .local if present
 	host = host + ".local."                   // Add .local. to make it a proper FQDN
-	// log.Printf("Using hostname: %s", host)
 
 	// Remove .local suffix if present for service name
 	serviceName := strings.TrimSuffix(domain, ".local")
-	// log.Printf("Service name: %s", serviceName)
 
 	// Get the machine's network IP
 	ip := GetOutboundIP()
-	// log.Printf("Advertising service on IP: %s", ip.String())
+
+	// Determine service type based on port
+	serviceType := "_http._tcp"
+	if port == 8443 || port > 1024 { // Assume HTTPS for port 8443 or high ports
+		serviceType = "_https._tcp"
+	}
 
 	// Configure mDNS service
 	service, err := mdns.NewMDNSService(
-		serviceName,   // Instance name
-		"_https._tcp", // Service
-		"",            // Domain (empty for .local)
-		host,          // Host name
-		port,          // Port
-		[]net.IP{ip},  // Use the network IP instead of localhost
+		serviceName,  // Instance name
+		serviceType,  // Service type (_http._tcp or _https._tcp)
+		"",           // Domain (empty for .local)
+		host,         // Host name
+		port,         // Port
+		[]net.IP{ip}, // Use the network IP instead of localhost
 		[]string{
 			"version=1",
 			fmt.Sprintf("ip=%s", ip.String()),
@@ -103,28 +99,23 @@ func RegisterDomain(domain string, port int) error {
 		}, // TXT records with more info
 	)
 	if err != nil {
-		// return fmt.Errorf("failed to create mDNS service: %w", err)
+		return fmt.Errorf("failed to create mDNS service: %w", err)
 	}
 
-	// Create the mDNS server with more debugging
-	config := &mdns.Config{
-		Zone:              service,
-		LogEmptyResponses: true,
-	}
-
-	server, err := mdns.NewServer(config)
+	// Create the mDNS server
+	server, err := mdns.NewServer(&mdns.Config{Zone: service})
 	if err != nil {
-		return fmt.Errorf("failed to start mDNS server: %w", err)
+		return fmt.Errorf("failed to create mDNS server: %w", err)
 	}
 
 	// Store the entry
 	globalServer.entries[domain] = &ServiceEntry{
 		domain: domain,
+		ip:     ip,
 		port:   port,
 		server: server,
 	}
 
-	// log.Printf("Successfully registered domain %s with mDNS on port %d", domain, port)
 	return nil
 }
 

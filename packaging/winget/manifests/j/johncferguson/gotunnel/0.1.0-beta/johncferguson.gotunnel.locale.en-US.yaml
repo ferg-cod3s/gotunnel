@@ -1,0 +1,51 @@
+# Created with YamlCreate.ps1 v2.2.0 $debug=QUSU.CRLF.7-2-6.Win32NT
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.4.0.schema.json
+
+PackageIdentifier: johncferguson.gotunnel
+PackageVersion: 0.1.0-beta
+PackageLocale: en-US
+Publisher: John Ferguson
+PublisherUrl: https://github.com/johncferguson
+PublisherSupportUrl: https://github.com/johncferguson/gotunnel/issues
+# PrivacyUrl:
+Author: John Ferguson
+PackageName: gotunnel
+PackageUrl: https://github.com/johncferguson/gotunnel
+License: MIT License
+LicenseUrl: https://github.com/johncferguson/gotunnel/blob/main/LICENSE
+Copyright: Copyright (c) 2024 John Ferguson
+CopyrightUrl: https://github.com/johncferguson/gotunnel/blob/main/LICENSE
+ShortDescription: Create secure local tunnels for development without root privileges
+Description: |-
+  gotunnel provides secure HTTP/HTTPS tunnels for local development with built-in proxy capabilities, 
+  OpenTelemetry observability, and enterprise-friendly configuration options.
+  
+  Features:
+  - No root privileges required
+  - Built-in HTTP proxy
+  - Enterprise-ready with corporate firewall support
+  - Multiple backend support (nginx, Caddy, built-in)
+  - Full OpenTelemetry observability
+  - Cross-platform support
+  - Docker and Kubernetes ready
+  - Automatic mDNS discovery
+Moniker: gotunnel
+Tags:
+- development
+- enterprise
+- http
+- https
+- local
+- network
+- proxy
+- tunnel
+# Agreements:
+ReleaseNotes: Initial beta release with comprehensive deployment infrastructure
+ReleaseNotesUrl: https://github.com/johncferguson/gotunnel/releases/tag/v0.1.0-beta
+# PurchaseUrl:
+# InstallationNotes:
+Documentations:
+- DocumentLabel: User Guide
+  DocumentUrl: https://github.com/johncferguson/gotunnel/blob/main/README.md
+ManifestType: defaultLocale
+ManifestVersion: 1.4.0

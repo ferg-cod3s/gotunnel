@@ -1,0 +1,124 @@
+version: '3.8'
+
+services:
+  gotunnel:
+    build: 
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
+        COMMIT: ${COMMIT:-unknown}
+        DATE: ${DATE:-unknown}
+    image: gotunnel:${VERSION:-latest}
+    container_name: gotunnel
+    restart: unless-stopped
+    
+    # Network configuration
+    ports:
+      - "8080:8080"   # HTTP proxy port
+      - "8443:8443"   # HTTPS proxy port
+      - "5353:5353/udp" # mDNS (if needed)
+    
+    # Environment variables
+    environment:
+      - GOTUNNEL_PROXY=builtin
+      - GOTUNNEL_PROXY_HTTP_PORT=8080
+      - GOTUNNEL_PROXY_HTTPS_PORT=8443
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - DEBUG=${DEBUG:-false}
+    
+    # Volumes for persistence
+    volumes:
+      - ./data:/app/data
+      - ./certs:/app/certs
+      - ./configs:/app/configs:ro
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    
+    # Networking
+    networks:
+      - gotunnel-net
+
+  # Example backend service
+  example-app:
+    image: nginx:alpine
+    container_name: example-app
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    volumes:
+      - ./examples/html:/usr/share/nginx/html:ro
+    networks:
+      - gotunnel-net
+
+  # Observability stack (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - gotunnel-net
+    profiles:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - gotunnel-net
+    profiles:
+      - monitoring
+
+networks:
+  gotunnel-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  prometheus-data:
+  grafana-data:

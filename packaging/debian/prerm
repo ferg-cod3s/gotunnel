@@ -1,0 +1,27 @@
+#!/bin/bash
+set -e
+
+# Pre-removal script for gotunnel
+
+case "$1" in
+    remove|purge)
+        # Stop and disable the service if it exists
+        if systemctl is-active --quiet gotunnel; then
+            systemctl stop gotunnel
+        fi
+        
+        if systemctl is-enabled --quiet gotunnel; then
+            systemctl disable gotunnel
+        fi
+        
+        # Remove systemd service file
+        if [ -f /etc/systemd/system/gotunnel.service ]; then
+            rm -f /etc/systemd/system/gotunnel.service
+            systemctl daemon-reload
+        fi
+        
+        echo "gotunnel service stopped and disabled"
+        ;;
+esac
+
+exit 0

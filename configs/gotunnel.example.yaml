@@ -1,0 +1,96 @@
+# gotunnel configuration file
+# Copy this to ~/.config/gotunnel/config.yaml or /etc/gotunnel/config.yaml
+
+# Service configuration
+service:
+  name: "gotunnel"
+  version: "1.0.0"
+  environment: "development"  # development, staging, production
+
+# Proxy configuration
+proxy:
+  mode: "builtin"  # builtin, nginx, caddy, auto, config, none
+  http_port: 80
+  https_port: 443
+  auto_install: false
+
+# Tunnel defaults
+tunnels:
+  default_https: true
+  default_https_port: 443
+  cert_dir: "./certs"
+  
+# Observability configuration
+observability:
+  # Logging
+  logging:
+    level: "info"  # trace, debug, info, warn, error
+    format: "text"  # text, json
+    sampling: false
+
+  # Tracing
+  tracing:
+    enabled: true
+    sampler: "parent_based_trace_id_ratio"
+    sample_rate: 1.0
+    exporters:
+      - otlp:
+          endpoint: "http://localhost:4318"
+          headers:
+            x-api-key: "${OTEL_API_KEY}"
+      - jaeger:
+          endpoint: "http://localhost:14268"
+
+  # Metrics
+  metrics:
+    enabled: true
+    interval: "30s"
+    exporters:
+      - prometheus:
+          endpoint: ":9090/metrics"
+      - otlp:
+          endpoint: "http://localhost:4318"
+
+  # Sentry integration
+  sentry:
+    dsn: "${SENTRY_DSN}"
+    environment: "${ENVIRONMENT}"
+    traces_sample_rate: 1.0
+    debug: false
+
+# Security settings
+security:
+  # Privilege settings
+  privilege_check: true
+  allow_non_root: true
+  
+  # Certificate settings
+  cert_validation: true
+  auto_cert_install: false
+  
+  # Hosts file settings
+  hosts_backup: true
+  hosts_restore_on_exit: true
+
+# Network settings
+network:
+  # DNS settings
+  dns_enabled: true
+  mdns_enabled: true
+  dns_port: 5353
+  
+  # Connection settings
+  connect_timeout: "10s"
+  read_timeout: "30s"
+  write_timeout: "30s"
+  idle_timeout: "60s"
+  
+  # Proxy settings
+  proxy_timeout: "30s"
+  proxy_keep_alive: true
+
+# Development settings
+development:
+  hot_reload: false
+  debug_proxy: false
+  log_requests: false

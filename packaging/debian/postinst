@@ -1,0 +1,61 @@
+#!/bin/bash
+set -e
+
+# Post-installation script for gotunnel
+
+case "$1" in
+    configure)
+        # Create configuration directory
+        mkdir -p /etc/gotunnel
+        
+        # Copy example configuration if it doesn't exist
+        if [ ! -f /etc/gotunnel/config.yaml ] && [ -f /usr/share/gotunnel/gotunnel.example.yaml ]; then
+            cp /usr/share/gotunnel/gotunnel.example.yaml /etc/gotunnel/config.yaml
+            chmod 644 /etc/gotunnel/config.yaml
+        fi
+
+        # Create systemd service
+        cat > /etc/systemd/system/gotunnel.service << 'EOF'
+[Unit]
+Description=gotunnel - Secure local tunnels for development
+Documentation=https://github.com/johncferguson/gotunnel
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/gotunnel --proxy=builtin start --port 3000 --domain myapp
+Restart=on-failure
+RestartSec=5
+Environment=ENVIRONMENT=production
+
+# Security settings
+NoNewPrivileges=false
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/etc/gotunnel /var/log /var/lib/gotunnel
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+        # Reload systemd
+        systemctl daemon-reload
+
+        echo "gotunnel installed successfully!"
+        echo ""
+        echo "Quick start:"
+        echo "  gotunnel --help"
+        echo "  gotunnel --proxy=builtin start --port 3000 --domain myapp"
+        echo ""
+        echo "To enable as a system service:"
+        echo "  sudo systemctl enable gotunnel"
+        echo "  sudo systemctl start gotunnel"
+        echo ""
+        echo "Configuration: /etc/gotunnel/config.yaml"
+        echo "Documentation: https://github.com/johncferguson/gotunnel"
+        ;;
+esac
+
+exit 0

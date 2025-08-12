@@ -1,0 +1,516 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+env:
+  GO_VERSION: '1.23'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.22', '1.23']
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go-version }}
+        
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-${{ matrix.go-version }}-
+          
+    - name: Download dependencies
+      run: go mod download
+      
+    - name: Verify dependencies
+      run: go mod verify
+      
+    - name: Run tests
+      run: go test -v -race -coverprofile=coverage.out ./...
+      
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.out
+        flags: unittests
+        name: codecov-umbrella
+        token: ${{ secrets.CODECOV_TOKEN }}
+        
+    - name: Check test coverage
+      run: |
+        coverage=$(go tool cover -func=coverage.out | grep total: | awk '{print $3}' | sed 's/%//')
+        echo "Test coverage: ${coverage}%"
+        if (( $(echo "$coverage < 70" | bc -l) )); then
+          echo "❌ Test coverage is below 70%"
+          exit 1
+        else
+          echo "✅ Test coverage is acceptable"
+        fi
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v4
+      with:
+        version: latest
+        args: --timeout=5m
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        
+    - name: Run Gosec Security Scanner
+      uses: securecodewarrior/github-action-gosec@master
+      with:
+        args: './...'
+        
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  build:
+    name: Build
+    needs: [test, lint, security]
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            suffix: linux-amd64
+            runner: ubuntu-latest
+          - goos: linux
+            goarch: arm64
+            suffix: linux-arm64
+            runner: ubuntu-latest
+          - goos: darwin
+            goarch: amd64
+            suffix: darwin-amd64
+            runner: macos-latest
+          - goos: darwin
+            goarch: arm64
+            suffix: darwin-arm64
+            runner: macos-latest
+          - goos: windows
+            goarch: amd64
+            suffix: windows-amd64.exe
+            runner: ubuntu-latest
+          - goos: windows
+            goarch: arm64
+            suffix: windows-arm64.exe
+            runner: ubuntu-latest
+    
+    runs-on: ${{ matrix.runner }}
+            
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        
+    - name: Get version
+      id: version
+      run: |
+        if [[ "${{ github.event_name }}" == "release" ]]; then
+          VERSION=${{ github.event.release.tag_name }}
+        else
+          VERSION=dev-$(git rev-parse --short HEAD)
+        fi
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "Building version: ${VERSION}"
+
+    # macOS signing setup
+    - name: Import Code-Signing Certificates
+      if: matrix.goos == 'darwin' && github.event_name == 'release'
+      uses: Apple-Actions/import-codesign-certs@v2
+      with:
+        p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
+        p12-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+        
+    - name: Build binary
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: 0
+      run: |
+        BINARY_NAME="gotunnel-${{ steps.version.outputs.version }}-${{ matrix.suffix }}"
+        go build -ldflags="-s -w -X main.version=${{ steps.version.outputs.version }} -X main.commit=${{ github.sha }} -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o "${BINARY_NAME}" ./cmd/gotunnel
+        
+        echo "Built: ${BINARY_NAME}"
+        ls -la "${BINARY_NAME}"*
+        
+    - name: Sign macOS binary
+      if: matrix.goos == 'darwin' && github.event_name == 'release'
+      env:
+        MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+        MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+        MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+        MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+      run: |
+        BINARY_NAME="gotunnel-${{ steps.version.outputs.version }}-${{ matrix.suffix }}"
+        chmod +x scripts/sign-macos.sh
+        ./scripts/sign-macos.sh "${BINARY_NAME}" "${{ matrix.goos }}"
+        
+    - name: Create checksums
+      run: |
+        BINARY_NAME="gotunnel-${{ steps.version.outputs.version }}-${{ matrix.suffix }}"
+        
+        # Create checksum
+        if command -v sha256sum >/dev/null; then
+          sha256sum "${BINARY_NAME}" > "${BINARY_NAME}.sha256"
+        else
+          shasum -a 256 "${BINARY_NAME}" > "${BINARY_NAME}.sha256"
+        fi
+        
+        echo "Checksum created for: ${BINARY_NAME}"
+        cat "${BINARY_NAME}.sha256"
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: gotunnel-${{ matrix.suffix }}
+        path: |
+          gotunnel-*
+          !gotunnel-*.sha256
+        retention-days: 30
+        
+    - name: Upload checksums
+      uses: actions/upload-artifact@v4
+      with:
+        name: checksums-${{ matrix.suffix }}
+        path: "*.sha256"
+        retention-days: 30
+
+  docker:
+    name: Build Docker Image
+    needs: [test, lint, security]
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=sha,prefix={{branch}}-
+          
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  release:
+    name: Create Release
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+        
+    - name: Prepare release assets
+      run: |
+        mkdir -p release-assets
+        
+        # Move binaries and checksums to release directory
+        find artifacts -name "gotunnel-*" -type f | while read file; do
+          cp "$file" release-assets/
+        done
+        
+        # Create combined checksums file
+        cat artifacts/checksums-*/*.sha256 > release-assets/SHA256SUMS
+        
+        # List all files
+        echo "Release assets:"
+        ls -la release-assets/
+        
+    - name: Upload release assets
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release-assets/*
+        generate_release_notes: true
+        make_latest: true
+        prerelease: ${{ contains(github.event.release.tag_name, 'beta') || contains(github.event.release.tag_name, 'alpha') || contains(github.event.release.tag_name, 'rc') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-homebrew:
+    name: Publish to Homebrew
+    needs: [release]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Get release info
+      id: release_info
+      run: |
+        VERSION=${{ github.event.release.tag_name }}
+        echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
+        
+        # Download release tarball to get SHA256
+        TARBALL_URL="https://github.com/${{ github.repository }}/archive/${VERSION}.tar.gz"
+        wget -O release.tar.gz "$TARBALL_URL"
+        SHA256=$(sha256sum release.tar.gz | cut -d' ' -f1)
+        echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+        
+    - name: Update Homebrew formula
+      run: |
+        VERSION="${{ steps.release_info.outputs.version }}"
+        SHA256="${{ steps.release_info.outputs.sha256 }}"
+        
+        # Update the formula file
+        sed -i "s/version \".*\"/version \"$VERSION\"/" packaging/homebrew/gotunnel.rb
+        sed -i "s/url \".*\"/url \"https:\/\/github.com\/${{ github.repository }}\/archive\/v$VERSION.tar.gz\"/" packaging/homebrew/gotunnel.rb
+        sed -i "s/sha256 \".*\"/sha256 \"$SHA256\"/" packaging/homebrew/gotunnel.rb
+        
+    - name: Create PR to Homebrew tap
+      env:
+        GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      run: |
+        # This would create a PR to your homebrew tap repository
+        echo "Homebrew formula updated - manual PR creation needed"
+        echo "Updated formula saved to artifacts for manual submission"
+        
+    - name: Upload Homebrew formula
+      uses: actions/upload-artifact@v4
+      with:
+        name: homebrew-formula
+        path: packaging/homebrew/gotunnel.rb
+
+  publish-aur:
+    name: Publish to AUR
+    needs: [release]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Create PKGBUILD
+      run: |
+        VERSION=${{ github.event.release.tag_name }}
+        VERSION=${VERSION#v}
+        
+        mkdir -p aur-package
+        cat > aur-package/PKGBUILD << EOF
+        # Maintainer: John Ferguson <john@fergify.work>
+        pkgname=gotunnel
+        pkgver=$VERSION
+        pkgrel=1
+        pkgdesc="Create secure local tunnels for development without root privileges"
+        arch=('x86_64' 'aarch64')
+        url="https://github.com/johncferguson/gotunnel"
+        license=('MIT')
+        depends=('glibc')
+        makedepends=('go')
+        source=("\$pkgname-\$pkgver.tar.gz::https://github.com/johncferguson/gotunnel/archive/v\$pkgver.tar.gz")
+        sha256sums=('SKIP')
+
+        build() {
+            cd "\$pkgname-\$pkgver"
+            export CGO_ENABLED=0
+            export GOFLAGS="-buildmode=pie -trimpath -ldflags=-linkmode=external"
+            go build -ldflags="-s -w -X main.version=\$pkgver" -o gotunnel ./cmd/gotunnel
+        }
+
+        package() {
+            cd "\$pkgname-\$pkgver"
+            install -Dm755 gotunnel "\$pkgdir/usr/bin/gotunnel"
+            install -Dm644 configs/gotunnel.example.yaml "\$pkgdir/usr/share/gotunnel/gotunnel.example.yaml"
+            install -Dm644 LICENSE "\$pkgdir/usr/share/licenses/\$pkgname/LICENSE"
+        }
+        EOF
+        
+    - name: Upload AUR package
+      uses: actions/upload-artifact@v4
+      with:
+        name: aur-package
+        path: aur-package/
+
+  publish-chocolatey:
+    name: Publish to Chocolatey
+    needs: [release]
+    runs-on: windows-latest
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Update Chocolatey package
+      shell: powershell
+      run: |
+        $version = "${{ github.event.release.tag_name }}".TrimStart('v')
+        
+        # Download Windows binaries to get SHA256
+        $url64 = "https://github.com/${{ github.repository }}/releases/download/v$version/gotunnel-v$version-windows-amd64.exe"
+        $urlArm64 = "https://github.com/${{ github.repository }}/releases/download/v$version/gotunnel-v$version-windows-arm64.exe"
+        
+        # Calculate checksums (would need actual files for real checksums)
+        $checksum64 = "PLACEHOLDER_SHA256"  # In real implementation, download and calculate
+        $checksumArm64 = "PLACEHOLDER_SHA256"
+        
+        # Update nuspec
+        (Get-Content packaging/chocolatey/gotunnel.nuspec) -replace '<version>.*</version>', "<version>$version</version>" | Set-Content packaging/chocolatey/gotunnel.nuspec
+        
+        # Update install script
+        (Get-Content packaging/chocolatey/tools/chocolateyinstall.ps1) -replace "url64 = '.*'", "url64 = '$url64'" | Set-Content packaging/chocolatey/tools/chocolateyinstall.ps1
+        (Get-Content packaging/chocolatey/tools/chocolateyinstall.ps1) -replace "checksum64 = '.*'", "checksum64 = '$checksum64'" | Set-Content packaging/chocolatey/tools/chocolateyinstall.ps1
+        
+    - name: Package for Chocolatey
+      shell: powershell
+      run: |
+        # Install chocolatey if needed (for choco pack)
+        if (!(Get-Command choco -ErrorAction SilentlyContinue)) {
+            Write-Host "Chocolatey not found - would need to install"
+        }
+        
+        # Would run: choco pack packaging/chocolatey/gotunnel.nuspec
+        Write-Host "Chocolatey package prepared - manual publication needed"
+        
+    - name: Upload Chocolatey package
+      uses: actions/upload-artifact@v4
+      with:
+        name: chocolatey-package
+        path: packaging/chocolatey/
+
+  publish-winget:
+    name: Publish to Winget
+    needs: [release]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Update Winget manifests
+      run: |
+        VERSION=${{ github.event.release.tag_name }}
+        VERSION=${VERSION#v}
+        
+        # Update version in all manifest files
+        find packaging/winget -name "*.yaml" -type f -exec sed -i "s/PackageVersion: .*/PackageVersion: $VERSION/" {} \;
+        find packaging/winget -name "*.yaml" -type f -exec sed -i "s/v1\.0\.0/v$VERSION/g" {} \;
+        
+        # Update release date
+        DATE=$(date +%Y-%m-%d)
+        sed -i "s/ReleaseDate: .*/ReleaseDate: $DATE/" packaging/winget/manifests/j/johncferguson/gotunnel/$VERSION/johncferguson.gotunnel.installer.yaml
+        
+    - name: Upload Winget manifests
+      uses: actions/upload-artifact@v4
+      with:
+        name: winget-manifests
+        path: packaging/winget/
+
+  notify:
+    name: Notify
+    needs: [test, lint, security, build, docker]
+    runs-on: ubuntu-latest
+    if: always() && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Notify on success
+      if: needs.test.result == 'success' && needs.lint.result == 'success' && needs.security.result == 'success' && needs.build.result == 'success'
+      run: |
+        echo "✅ All CI/CD jobs completed successfully!"
+        echo "📦 Artifacts built for all platforms"
+        echo "🔒 Security scans passed"
+        echo "🧪 Tests passed with coverage requirements met"
+        
+    - name: Notify on failure
+      if: needs.test.result == 'failure' || needs.lint.result == 'failure' || needs.security.result == 'failure' || needs.build.result == 'failure'
+      run: |
+        echo "❌ CI/CD pipeline failed!"
+        echo "Test: ${{ needs.test.result }}"
+        echo "Lint: ${{ needs.lint.result }}"
+        echo "Security: ${{ needs.security.result }}"
+        echo "Build: ${{ needs.build.result }}"
+        exit 1

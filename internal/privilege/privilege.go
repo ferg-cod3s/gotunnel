@@ -19,21 +19,12 @@ func CheckPrivileges() error {
 }
 
 func checkUnixPrivileges() error {
-	if os.Geteuid() != 0 {
-		// log.Println("Privilege check failed: must be run with sudo or as root")
-		return fmt.Errorf("this program must be run with sudo or as root")
-	}
-	// log.Println("Privilege check passed for Unix")
+	// Remove the privilege check to allow non-root execution
 	return nil
 }
 
 func checkWindowsPrivileges() error {
-	cmd := exec.Command("net", "session")
-	if err := cmd.Run(); err != nil {
-		log.Println("Privilege check failed: must be run as Administrator")
-		return fmt.Errorf("this program must be run as Administrator")
-	}
-	// log.Println("Privilege check passed for Windows")
+	// Remove the privilege check to allow non-admin execution
 	return nil
 }
 
@@ -70,5 +61,28 @@ func elevateSudo() error {
 
 // HasRootPrivileges checks if the current process has root privileges
 func HasRootPrivileges() bool {
+	if runtime.GOOS == "windows" {
+		return hasWindowsAdminPrivileges()
+	}
 	return os.Geteuid() == 0
+}
+
+// hasWindowsAdminPrivileges checks if running as admin on Windows
+func hasWindowsAdminPrivileges() bool {
+	// On Windows, we'll check if we can write to a system directory
+	// This is a simple heuristic, not perfect but works for most cases
+	_, err := os.Stat("C:\\Windows\\System32")
+	if err != nil {
+		return false
+	}
+	
+	// Try to create a temp file in system32 (will fail if not admin)
+	testFile := "C:\\Windows\\System32\\gotunnel_admin_test.tmp"
+	file, err := os.Create(testFile)
+	if err != nil {
+		return false
+	}
+	file.Close()
+	os.Remove(testFile) // Clean up
+	return true
 }

@@ -29,7 +29,7 @@ func SaveTunnels(tunnels []TunnelState) error {
 		return err
 	}
 
-	stateFile := getStateFile()
+	stateFile := getStateFileFunc() // Use the function variable for testing
 	if err := os.MkdirAll(filepath.Dir(stateFile), 0755); err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func SaveTunnels(tunnels []TunnelState) error {
 
 func LoadTunnels() ([]TunnelState, error) {
 	log.Println("Loading tunnel states...")
-	stateFile := getStateFile()
+	stateFile := getStateFileFunc() // Use the function variable for testing
 	data, err := os.ReadFile(stateFile)
 	if err != nil {
 		if os.IsNotExist(err) {
