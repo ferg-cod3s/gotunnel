@@ -30,13 +30,13 @@ gotunnel provides secure HTTP/HTTPS tunnels for local development with built-in 
 
 **Homebrew (macOS/Linux):**
 ```bash
-brew tap johncferguson/gotunnel
+brew tap ferg-cod3s/gotunnel
 brew install gotunnel
 ```
 
 **Scoop (Windows):**
 ```powershell
-scoop bucket add johncferguson https://github.com/johncferguson/scoop-bucket
+scoop bucket add ferg-cod3s https://github.com/ferg-cod3s/scoop-bucket
 scoop install gotunnel
 ```
 
