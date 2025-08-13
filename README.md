@@ -1,72 +1,37 @@
-# gotunnel 🚇 (Beta)
+# gotunnel 🚇 
 
 [![Go Version](https://img.shields.io/github/go-mod/go-version/johncferguson/gotunnel)](https://golang.org/)
 [![Release](https://img.shields.io/github/v/release/johncferguson/gotunnel?include_prereleases)](https://github.com/johncferguson/gotunnel/releases)
-[![Docker](https://img.shields.io/badge/docker-available-blue.svg)](https://hub.docker.com/r/johncferguson/gotunnel)
+[![CI/CD](https://github.com/johncferguson/gotunnel/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/johncferguson/gotunnel/actions)
+[![Docker](https://img.shields.io/badge/docker-available-blue.svg)](https://ghcr.io/johncferguson/gotunnel)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Report Card](https://goreportcard.com/badge/github.com/johncferguson/gotunnel)](https://goreportcard.com/report/github.com/johncferguson/gotunnel)
-[![Beta](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/johncferguson/gotunnel/releases)
 
 **Create secure local tunnels for development without root privileges**
 
-> ⚠️ **Beta Software**: gotunnel is currently in beta. While functional and extensively tested, the API and configuration may change before v1.0. Please report any issues or feedback!
-
 gotunnel provides secure HTTP/HTTPS tunnels for local development with built-in proxy capabilities, OpenTelemetry observability, and enterprise-friendly configuration options.
 
-## Features
+## ✨ Features
 
-- ✅ **No Root Required**: Works without administrator privileges
-- ✅ **Built-in HTTP Proxy**: No external dependencies needed
-- ✅ **Enterprise Ready**: Works with corporate firewalls and proxy settings
-- ✅ **Multiple Backends**: Support for nginx, Caddy, or built-in proxy
-- ✅ **OpenTelemetry**: Full observability with traces, metrics, and logs
-- ✅ **Cross-Platform**: Native support for macOS, Linux, and Windows
-- ✅ **Docker Ready**: Full containerization support with Compose
-- ✅ **Auto-Discovery**: mDNS support for network-wide access
+- 🔐 **No Root Required**: Works without administrator privileges
+- 🌐 **Built-in HTTP Proxy**: No external dependencies needed
+- 🏢 **Enterprise Ready**: Works with corporate firewalls and proxy settings
+- 🔄 **Multiple Backends**: Support for nginx, Caddy, or built-in proxy
+- 📊 **OpenTelemetry**: Full observability with traces, metrics, and logs
+- 🖥️ **Cross-Platform**: Native support for macOS, Linux, and Windows
+- 🐳 **Docker Ready**: Full containerization support with Compose
+- 🔍 **Auto-Discovery**: mDNS support for network-wide access
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Installation
+
+#### Package Managers
 
 **Homebrew (macOS/Linux):**
 ```bash
 brew tap johncferguson/gotunnel
 brew install gotunnel
-```
-
-**APT (Debian/Ubuntu):**
-```bash
-# Beta release
-curl -fsSL https://github.com/johncferguson/gotunnel/releases/latest/download/gotunnel_0.1.0-beta_amd64.deb -o gotunnel.deb
-sudo dpkg -i gotunnel.deb
-
-# Or via repository (coming soon)
-# curl -fsSL https://apt.gotunnel.dev/gpg | sudo apt-key add -
-# echo "deb https://apt.gotunnel.dev/ beta main" | sudo tee /etc/apt/sources.list.d/gotunnel.list
-# sudo apt update && sudo apt install gotunnel
-```
-
-**AUR (Arch Linux):**
-```bash
-# Using yay
-yay -S gotunnel
-
-# Using paru  
-paru -S gotunnel
-
-# Manual
-git clone https://aur.archlinux.org/gotunnel.git
-cd gotunnel && makepkg -si
-```
-
-**Chocolatey (Windows):**
-```powershell
-choco install gotunnel
-```
-
-**Winget (Windows):**
-```powershell
-winget install johncferguson.gotunnel
 ```
 
 **Scoop (Windows):**
@@ -75,7 +40,21 @@ scoop bucket add johncferguson https://github.com/johncferguson/scoop-bucket
 scoop install gotunnel
 ```
 
-**Direct Download:**
+**APT (Debian/Ubuntu):**
+```bash
+curl -fsSL https://github.com/johncferguson/gotunnel/releases/latest/download/gotunnel_0.1.0-beta_amd64.deb -o gotunnel.deb
+sudo dpkg -i gotunnel.deb
+```
+
+**AUR (Arch Linux):**
+```bash
+yay -S gotunnel
+# or: paru -S gotunnel
+```
+
+#### Direct Installation
+
+**Install Script (Unix):**
 ```bash
 curl -sSL https://raw.githubusercontent.com/johncferguson/gotunnel/main/scripts/install.sh | bash
 ```
@@ -87,7 +66,7 @@ go install github.com/johncferguson/gotunnel/cmd/gotunnel@latest
 
 **Docker:**
 ```bash
-docker run --rm -p 80:80 -p 443:443 johncferguson/gotunnel:latest
+docker run --rm -p 80:80 -p 443:443 ghcr.io/johncferguson/gotunnel:latest
 ```
 
 ### Basic Usage
@@ -101,7 +80,7 @@ gotunnel --proxy=builtin --no-privilege-check start \
 
 **Access your app:**
 - Local: `http://localhost:3000`
-- Tunnel: `http://myapp.local`
+- Tunnel: `http://myapp.local:8080` (with non-privileged ports)
 
 **With HTTPS (default):**
 ```bash
@@ -121,7 +100,7 @@ gotunnel start --port 8080 --domain api
 gotunnel start --port 5432 --domain pgadmin
 ```
 
-## Enterprise Usage
+## 🏢 Enterprise Usage
 
 ### Custom Proxy Ports
 ```bash
@@ -143,30 +122,36 @@ gotunnel start --port 3000 --domain myapp
 gotunnel --proxy=config start --port 3000 --domain myapp
 ```
 
-## Docker Deployment
+## 🐳 Docker Deployment
 
 ### Docker Compose (Recommended)
 
+**Quick Start:**
 ```yaml
 version: '3.8'
 services:
   gotunnel:
-    image: johncferguson/gotunnel:latest
+    image: ghcr.io/johncferguson/gotunnel:latest
     ports:
       - "80:80"
       - "443:443"
     environment:
       - ENVIRONMENT=production
-      - SENTRY_DSN=your-sentry-dsn
+      - SENTRY_DSN=${SENTRY_DSN}
     volumes:
       - ./certs:/app/certs
       - ./config:/app/config
     restart: unless-stopped
 ```
 
-**Start with monitoring:**
+**With Monitoring Stack:**
 ```bash
+# Copy the provided docker-compose.yml
 docker-compose --profile monitoring up -d
+
+# Access services
+open http://localhost:3000  # Grafana (admin/admin)
+open http://localhost:9090  # Prometheus
 ```
 
 ### Kubernetes
@@ -188,7 +173,7 @@ spec:
     spec:
       containers:
       - name: gotunnel
-        image: johncferguson/gotunnel:latest
+        image: ghcr.io/johncferguson/gotunnel:latest
         ports:
         - containerPort: 80
         - containerPort: 443
@@ -197,7 +182,7 @@ spec:
           value: "production"
 ```
 
-## Configuration
+## ⚙️ Configuration
 
 ### Environment Variables
 
@@ -230,7 +215,7 @@ observability:
     sample_rate: 1.0
 ```
 
-## Observability
+## 📊 Observability
 
 ### Metrics
 
@@ -261,7 +246,7 @@ open http://localhost:3000  # Grafana (admin/admin)
 open http://localhost:9090  # Prometheus
 ```
 
-## CLI Reference
+## 📚 CLI Reference
 
 ### Global Flags
 
@@ -287,7 +272,7 @@ gotunnel list                                 # List active tunnels
 gotunnel stop-all                            # Stop all tunnels
 ```
 
-## Troubleshooting
+## 🛠️ Troubleshooting
 
 ### Common Issues
 
@@ -343,7 +328,7 @@ brew services start gotunnel
 brew services stop gotunnel
 ```
 
-## Development
+## 🧪 Development
 
 ### Building from Source
 
@@ -362,7 +347,7 @@ go test ./internal/tunnel -v     # Specific package
 go test -race ./...              # Race detection
 ```
 
-### Linting
+### Quality Checks
 
 ```bash
 golangci-lint run               # Full linting
@@ -370,7 +355,18 @@ go fmt ./...                    # Format code
 go vet ./...                    # Static analysis
 ```
 
-## Security
+### CI/CD Pipeline
+
+The project uses GitHub Actions for:
+- ✅ Multi-platform testing (Go 1.22, 1.23)
+- ✅ Comprehensive linting with golangci-lint
+- ✅ Security scanning with gosec and Trivy
+- ✅ Multi-architecture builds (Linux, macOS, Windows - amd64/arm64)
+- ✅ Docker image building and publishing
+- ✅ Automated releases and package distribution
+- ✅ Code signing for macOS binaries
+
+## 🔒 Security
 
 ### Reporting Vulnerabilities
 
@@ -386,7 +382,7 @@ Please report security vulnerabilities via [GitHub Security Advisories](https://
 - **Security Scanning**: Automated vulnerability scanning in CI/CD pipeline
 - **Encrypted Secrets**: All sensitive data handled through encrypted GitHub secrets
 
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -402,18 +398,18 @@ Please report security vulnerabilities via [GitHub Security Advisories](https://
 - Use conventional commits for clear history
 - Ensure all CI checks pass
 
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Support
+## 🆘 Support
 
-- 📚 [Documentation](https://github.com/johncferguson/gotunnel/docs)
+- 📚 [Documentation](https://gotunnel.dev)
 - 🐛 [Issue Tracker](https://github.com/johncferguson/gotunnel/issues)
 - 💬 [Discussions](https://github.com/johncferguson/gotunnel/discussions)
 - 🔐 [Security](https://github.com/johncferguson/gotunnel/security)
 
-## Acknowledgments
+## 🙏 Acknowledgments
 
 - Built with [Go](https://golang.org/) and love ❤️
 - Observability powered by [OpenTelemetry](https://opentelemetry.io/)

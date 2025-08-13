@@ -1,0 +1,506 @@
+---
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Installation - gotunnel 🚇</title>
+		<meta name="description" content="Install gotunnel on your system using package managers or direct installation methods" />
+		<style>
+			:root {
+				--primary: #2563eb;
+				--primary-dark: #1d4ed8;
+				--text: #1f2937;
+				--text-light: #6b7280;
+				--bg: #ffffff;
+				--bg-light: #f9fafb;
+				--border: #e5e7eb;
+				--success: #10b981;
+			}
+			
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+			
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+				line-height: 1.6;
+				color: var(--text);
+				background: var(--bg);
+			}
+			
+			.container {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 0 2rem;
+			}
+			
+			header {
+				background: var(--bg);
+				border-bottom: 1px solid var(--border);
+				padding: 1rem 0;
+			}
+			
+			nav {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+			
+			.logo {
+				font-size: 1.5rem;
+				font-weight: bold;
+				color: var(--primary);
+				text-decoration: none;
+			}
+			
+			.nav-links {
+				display: flex;
+				gap: 2rem;
+				list-style: none;
+			}
+			
+			.nav-links a {
+				color: var(--text);
+				text-decoration: none;
+				font-weight: 500;
+				transition: color 0.2s;
+			}
+			
+			.nav-links a:hover {
+				color: var(--primary);
+			}
+			
+			main {
+				padding: 3rem 0;
+			}
+			
+			h1 {
+				font-size: 3rem;
+				margin-bottom: 1rem;
+				color: var(--primary);
+				text-align: center;
+			}
+			
+			.subtitle {
+				text-align: center;
+				font-size: 1.25rem;
+				color: var(--text-light);
+				margin-bottom: 3rem;
+			}
+			
+			.platform-selector {
+				display: flex;
+				justify-content: center;
+				gap: 1rem;
+				margin-bottom: 3rem;
+				flex-wrap: wrap;
+			}
+			
+			.platform-btn {
+				padding: 0.75rem 1.5rem;
+				border: 2px solid var(--border);
+				background: var(--bg);
+				color: var(--text);
+				border-radius: 0.5rem;
+				cursor: pointer;
+				transition: all 0.2s;
+				font-weight: 500;
+			}
+			
+			.platform-btn:hover {
+				border-color: var(--primary);
+				color: var(--primary);
+			}
+			
+			.platform-btn.active {
+				background: var(--primary);
+				border-color: var(--primary);
+				color: white;
+			}
+			
+			.install-section {
+				background: var(--bg-light);
+				padding: 2rem;
+				border-radius: 0.75rem;
+				margin-bottom: 2rem;
+				border-left: 4px solid var(--primary);
+			}
+			
+			.install-section h2 {
+				margin-bottom: 1rem;
+				color: var(--primary);
+			}
+			
+			.install-methods {
+				display: grid;
+				gap: 1.5rem;
+			}
+			
+			.install-method {
+				background: var(--bg);
+				padding: 1.5rem;
+				border-radius: 0.5rem;
+				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+			}
+			
+			.method-header {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				margin-bottom: 1rem;
+			}
+			
+			.method-header h3 {
+				color: var(--primary);
+				margin: 0;
+			}
+			
+			.copy-btn {
+				background: var(--primary);
+				color: white;
+				border: none;
+				padding: 0.5rem 1rem;
+				border-radius: 0.25rem;
+				cursor: pointer;
+				font-size: 0.875rem;
+				transition: background 0.2s;
+			}
+			
+			.copy-btn:hover {
+				background: var(--primary-dark);
+			}
+			
+			.copy-btn.copied {
+				background: var(--success);
+			}
+			
+			.install-method pre {
+				background: var(--text);
+				color: white;
+				padding: 1rem;
+				border-radius: 0.5rem;
+				overflow-x: auto;
+				font-family: 'SF Mono', Consolas, monospace;
+				margin: 0;
+			}
+			
+			.install-method p {
+				color: var(--text-light);
+				margin-bottom: 1rem;
+			}
+			
+			.verification {
+				background: var(--bg);
+				padding: 2rem;
+				border-radius: 0.75rem;
+				border-left: 4px solid var(--success);
+			}
+			
+			.verification h2 {
+				color: var(--success);
+				margin-bottom: 1rem;
+			}
+			
+			.hidden {
+				display: none;
+			}
+			
+			@media (max-width: 768px) {
+				h1 {
+					font-size: 2rem;
+				}
+				
+				.platform-selector {
+					flex-direction: column;
+					align-items: center;
+				}
+				
+				.platform-btn {
+					width: 200px;
+					text-align: center;
+				}
+				
+				.nav-links {
+					display: none;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<header>
+			<div class="container">
+				<nav>
+					<a href="/" class="logo">gotunnel 🚇</a>
+					<ul class="nav-links">
+						<li><a href="/docs">Documentation</a></li>
+						<li><a href="/install">Installation</a></li>
+						<li><a href="/examples">Examples</a></li>
+						<li><a href="https://github.com/johncferguson/gotunnel">GitHub</a></li>
+					</ul>
+				</nav>
+			</div>
+		</header>
+
+		<main class="container">
+			<h1>Install gotunnel</h1>
+			<p class="subtitle">Choose your preferred installation method for your operating system</p>
+
+			<div class="platform-selector">
+				<button class="platform-btn active" data-platform="macos">macOS</button>
+				<button class="platform-btn" data-platform="linux">Linux</button>
+				<button class="platform-btn" data-platform="windows">Windows</button>
+				<button class="platform-btn" data-platform="docker">Docker</button>
+			</div>
+
+			<!-- macOS Installation -->
+			<div id="macos-install" class="install-section">
+				<h2>🍎 macOS Installation</h2>
+				<div class="install-methods">
+					<div class="install-method">
+						<div class="method-header">
+							<h3>Homebrew (Recommended)</h3>
+							<button class="copy-btn" onclick="copyToClipboard('macos-homebrew', this)">Copy</button>
+						</div>
+						<p>The easiest way to install gotunnel on macOS</p>
+						<pre id="macos-homebrew"><code>brew tap johncferguson/gotunnel
+brew install gotunnel</code></pre>
+					</div>
+					
+					<div class="install-method">
+						<div class="method-header">
+							<h3>Install Script</h3>
+							<button class="copy-btn" onclick="copyToClipboard('macos-script', this)">Copy</button>
+						</div>
+						<p>Direct installation using our install script</p>
+						<pre id="macos-script"><code>curl -sSL https://raw.githubusercontent.com/johncferguson/gotunnel/main/scripts/install.sh | bash</code></pre>
+					</div>
+					
+					<div class="install-method">
+						<div class="method-header">
+							<h3>Go Install</h3>
+							<button class="copy-btn" onclick="copyToClipboard('macos-go', this)">Copy</button>
+						</div>
+						<p>If you have Go installed</p>
+						<pre id="macos-go"><code>go install github.com/johncferguson/gotunnel/cmd/gotunnel@latest</code></pre>
+					</div>
+				</div>
+			</div>
+
+			<!-- Linux Installation -->
+			<div id="linux-install" class="install-section hidden">
+				<h2>🐧 Linux Installation</h2>
+				<div class="install-methods">
+					<div class="install-method">
+						<div class="method-header">
+							<h3>APT (Debian/Ubuntu)</h3>
+							<button class="copy-btn" onclick="copyToClipboard('linux-apt', this)">Copy</button>
+						</div>
+						<p>For Debian-based distributions</p>
+						<pre id="linux-apt"><code>curl -fsSL https://github.com/johncferguson/gotunnel/releases/latest/download/gotunnel_0.1.0-beta_amd64.deb -o gotunnel.deb
+sudo dpkg -i gotunnel.deb</code></pre>
+					</div>
+					
+					<div class="install-method">
+						<div class="method-header">
+							<h3>AUR (Arch Linux)</h3>
+							<button class="copy-btn" onclick="copyToClipboard('linux-aur', this)">Copy</button>
+						</div>
+						<p>For Arch Linux users</p>
+						<pre id="linux-aur"><code>yay -S gotunnel
+# or: paru -S gotunnel</code></pre>
+					</div>
+					
+					<div class="install-method">
+						<div class="method-header">
+							<h3>Install Script</h3>
+							<button class="copy-btn" onclick="copyToClipboard('linux-script', this)">Copy</button>
+						</div>
+						<p>Universal installation script for Linux</p>
+						<pre id="linux-script"><code>curl -sSL https://raw.githubusercontent.com/johncferguson/gotunnel/main/scripts/install.sh | bash</code></pre>
+					</div>
+				</div>
+			</div>
+
+			<!-- Windows Installation -->
+			<div id="windows-install" class="install-section hidden">
+				<h2>🪟 Windows Installation</h2>
+				<div class="install-methods">
+					<div class="install-method">
+						<div class="method-header">
+							<h3>Scoop (Recommended)</h3>
+							<button class="copy-btn" onclick="copyToClipboard('windows-scoop', this)">Copy</button>
+						</div>
+						<p>Easy package management for Windows</p>
+						<pre id="windows-scoop"><code>scoop bucket add johncferguson https://github.com/johncferguson/scoop-bucket
+scoop install gotunnel</code></pre>
+					</div>
+					
+					<div class="install-method">
+						<div class="method-header">
+							<h3>Winget</h3>
+							<button class="copy-btn" onclick="copyToClipboard('windows-winget', this)">Copy</button>
+						</div>
+						<p>Windows Package Manager</p>
+						<pre id="windows-winget"><code>winget install johncferguson.gotunnel</code></pre>
+					</div>
+					
+					<div class="install-method">
+						<div class="method-header">
+							<h3>Chocolatey</h3>
+							<button class="copy-btn" onclick="copyToClipboard('windows-choco', this)">Copy</button>
+						</div>
+						<p>Popular Windows package manager</p>
+						<pre id="windows-choco"><code>choco install gotunnel</code></pre>
+					</div>
+				</div>
+			</div>
+
+			<!-- Docker Installation -->
+			<div id="docker-install" class="install-section hidden">
+				<h2>🐳 Docker Installation</h2>
+				<div class="install-methods">
+					<div class="install-method">
+						<div class="method-header">
+							<h3>Docker Run</h3>
+							<button class="copy-btn" onclick="copyToClipboard('docker-run', this)">Copy</button>
+						</div>
+						<p>Quick start with Docker</p>
+						<pre id="docker-run"><code>docker run --rm -p 80:80 -p 443:443 ghcr.io/johncferguson/gotunnel:latest</code></pre>
+					</div>
+					
+					<div class="install-method">
+						<div class="method-header">
+							<h3>Docker Compose</h3>
+							<button class="copy-btn" onclick="copyToClipboard('docker-compose', this)">Copy</button>
+						</div>
+						<p>Production deployment with Docker Compose</p>
+						<pre id="docker-compose"><code>version: '3.8'
+services:
+  gotunnel:
+    image: ghcr.io/johncferguson/gotunnel:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - ENVIRONMENT=production
+      - SENTRY_DSN=${SENTRY_DSN}
+    restart: unless-stopped</code></pre>
+					</div>
+				</div>
+			</div>
+
+			<!-- Verification -->
+			<div class="verification">
+				<h2>✅ Verify Installation</h2>
+				<p>After installation, verify that gotunnel is working correctly:</p>
+				<div class="install-method">
+					<div class="method-header">
+						<h3>Check Version</h3>
+						<button class="copy-btn" onclick="copyToClipboard('verify-version', this)">Copy</button>
+					</div>
+					<pre id="verify-version"><code>gotunnel --version</code></pre>
+				</div>
+				
+				<div class="install-method">
+					<div class="method-header">
+						<h3>Quick Test</h3>
+						<button class="copy-btn" onclick="copyToClipboard('verify-test', this)">Copy</button>
+					</div>
+					<p>Start a simple tunnel (no root privileges required):</p>
+					<pre id="verify-test"><code>gotunnel --proxy=builtin --no-privilege-check start \
+  --port 3000 --domain test --https=false</code></pre>
+				</div>
+			</div>
+		</main>
+
+		<script>
+			// Platform switching functionality
+			const platformButtons = document.querySelectorAll('.platform-btn');
+			const installSections = document.querySelectorAll('.install-section');
+
+			platformButtons.forEach(button => {
+				button.addEventListener('click', () => {
+					// Remove active class from all buttons
+					platformButtons.forEach(btn => btn.classList.remove('active'));
+					
+					// Add active class to clicked button
+					button.classList.add('active');
+					
+					// Hide all sections
+					installSections.forEach(section => section.classList.add('hidden'));
+					
+					// Show selected section
+					const platform = button.dataset.platform;
+					const targetSection = document.getElementById(`${platform}-install`);
+					if (targetSection) {
+						targetSection.classList.remove('hidden');
+					}
+				});
+			});
+
+			// Copy to clipboard functionality
+			function copyToClipboard(elementId, button) {
+				const element = document.getElementById(elementId);
+				const text = element.textContent;
+				
+				navigator.clipboard.writeText(text).then(() => {
+					// Update button text
+					const originalText = button.textContent;
+					button.textContent = 'Copied!';
+					button.classList.add('copied');
+					
+					// Reset after 2 seconds
+					setTimeout(() => {
+						button.textContent = originalText;
+						button.classList.remove('copied');
+					}, 2000);
+				}).catch(err => {
+					console.error('Failed to copy text: ', err);
+					
+					// Fallback for older browsers
+					const textArea = document.createElement('textarea');
+					textArea.value = text;
+					document.body.appendChild(textArea);
+					textArea.select();
+					document.execCommand('copy');
+					document.body.removeChild(textArea);
+					
+					button.textContent = 'Copied!';
+					button.classList.add('copied');
+					setTimeout(() => {
+						button.textContent = 'Copy';
+						button.classList.remove('copied');
+					}, 2000);
+				});
+			}
+
+			// Auto-detect platform
+			function detectPlatform() {
+				const userAgent = navigator.userAgent.toLowerCase();
+				if (userAgent.includes('mac')) {
+					return 'macos';
+				} else if (userAgent.includes('linux')) {
+					return 'linux';
+				} else if (userAgent.includes('win')) {
+					return 'windows';
+				}
+				return 'macos'; // default
+			}
+
+			// Initialize with detected platform
+			document.addEventListener('DOMContentLoaded', () => {
+				const detectedPlatform = detectPlatform();
+				const platformButton = document.querySelector(`[data-platform="${detectedPlatform}"]`);
+				if (platformButton) {
+					platformButton.click();
+				}
+			});
+		</script>
+	</body>
+</html>

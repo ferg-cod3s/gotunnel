@@ -29,5 +29,5 @@ if (Test-Path $binPath) {
     Write-Host "  gotunnel --help" -ForegroundColor Cyan
     Write-Host "  gotunnel --proxy=builtin start --port 3000 --domain myapp" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "Documentation: https://github.com/johncferguson/gotunnel" -ForegroundColor Magenta
+    Write-Host "Documentation: https://gotunnel.dev" -ForegroundColor Magenta
 }

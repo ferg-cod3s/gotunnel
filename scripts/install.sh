@@ -219,7 +219,7 @@ show_usage() {
     echo "  # Get help"
     echo "  gotunnel --help"
     echo
-    log_info "Visit https://github.com/$REPO for documentation and examples"
+    log_info "Visit https://gotunnel.dev for documentation and examples"
 }
 
 # Main installation flow

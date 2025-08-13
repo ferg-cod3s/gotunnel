@@ -1,0 +1,357 @@
+---
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>gotunnel 🚇 - Secure Local Development Tunnels</title>
+		<meta name="description" content="Create secure local tunnels for development without root privileges. Built-in proxy, OpenTelemetry observability, and enterprise-friendly configuration." />
+		<style>
+			:root {
+				--primary: #2563eb;
+				--primary-dark: #1d4ed8;
+				--text: #1f2937;
+				--text-light: #6b7280;
+				--bg: #ffffff;
+				--bg-light: #f9fafb;
+				--border: #e5e7eb;
+			}
+			
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+			
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+				line-height: 1.6;
+				color: var(--text);
+				background: var(--bg);
+			}
+			
+			.container {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 0 2rem;
+			}
+			
+			header {
+				background: var(--bg);
+				border-bottom: 1px solid var(--border);
+				padding: 1rem 0;
+			}
+			
+			nav {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+			
+			.logo {
+				font-size: 1.5rem;
+				font-weight: bold;
+				color: var(--primary);
+				text-decoration: none;
+			}
+			
+			.nav-links {
+				display: flex;
+				gap: 2rem;
+				list-style: none;
+			}
+			
+			.nav-links a {
+				color: var(--text);
+				text-decoration: none;
+				font-weight: 500;
+				transition: color 0.2s;
+			}
+			
+			.nav-links a:hover {
+				color: var(--primary);
+			}
+			
+			.hero {
+				background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+				color: white;
+				padding: 4rem 0;
+				text-align: center;
+			}
+			
+			.hero h1 {
+				font-size: 3rem;
+				margin-bottom: 1rem;
+				font-weight: 700;
+			}
+			
+			.hero p {
+				font-size: 1.25rem;
+				margin-bottom: 2rem;
+				opacity: 0.9;
+			}
+			
+			.cta-buttons {
+				display: flex;
+				gap: 1rem;
+				justify-content: center;
+				flex-wrap: wrap;
+			}
+			
+			.btn {
+				display: inline-block;
+				padding: 0.75rem 1.5rem;
+				border-radius: 0.5rem;
+				text-decoration: none;
+				font-weight: 600;
+				transition: all 0.2s;
+			}
+			
+			.btn-primary {
+				background: white;
+				color: var(--primary);
+			}
+			
+			.btn-primary:hover {
+				background: var(--bg-light);
+				transform: translateY(-2px);
+			}
+			
+			.btn-secondary {
+				background: transparent;
+				color: white;
+				border: 2px solid white;
+			}
+			
+			.btn-secondary:hover {
+				background: white;
+				color: var(--primary);
+			}
+			
+			.features {
+				padding: 4rem 0;
+				background: var(--bg-light);
+			}
+			
+			.features h2 {
+				text-align: center;
+				font-size: 2.5rem;
+				margin-bottom: 3rem;
+				color: var(--text);
+			}
+			
+			.features-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+				gap: 2rem;
+			}
+			
+			.feature {
+				background: var(--bg);
+				padding: 2rem;
+				border-radius: 0.5rem;
+				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+			}
+			
+			.feature h3 {
+				font-size: 1.25rem;
+				margin-bottom: 1rem;
+				color: var(--primary);
+			}
+			
+			.feature p {
+				color: var(--text-light);
+			}
+			
+			.install {
+				padding: 4rem 0;
+			}
+			
+			.install h2 {
+				text-align: center;
+				font-size: 2.5rem;
+				margin-bottom: 3rem;
+			}
+			
+			.install-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+				gap: 2rem;
+			}
+			
+			.install-method {
+				background: var(--bg-light);
+				padding: 1.5rem;
+				border-radius: 0.5rem;
+				border-left: 4px solid var(--primary);
+			}
+			
+			.install-method h3 {
+				margin-bottom: 1rem;
+				color: var(--primary);
+			}
+			
+			.install-method code {
+				background: var(--text);
+				color: white;
+				padding: 0.5rem;
+				border-radius: 0.25rem;
+				display: block;
+				font-family: 'SF Mono', Consolas, monospace;
+				overflow-x: auto;
+			}
+			
+			footer {
+				background: var(--text);
+				color: white;
+				padding: 2rem 0;
+				text-align: center;
+			}
+			
+			.footer-links {
+				display: flex;
+				justify-content: center;
+				gap: 2rem;
+				margin-bottom: 1rem;
+				flex-wrap: wrap;
+			}
+			
+			.footer-links a {
+				color: white;
+				text-decoration: none;
+				opacity: 0.8;
+				transition: opacity 0.2s;
+			}
+			
+			.footer-links a:hover {
+				opacity: 1;
+			}
+			
+			@media (max-width: 768px) {
+				.hero h1 {
+					font-size: 2rem;
+				}
+				
+				.hero p {
+					font-size: 1rem;
+				}
+				
+				.cta-buttons {
+					flex-direction: column;
+					align-items: center;
+				}
+				
+				.nav-links {
+					display: none;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<header>
+			<div class="container">
+				<nav>
+					<a href="/" class="logo">gotunnel 🚇</a>
+					<ul class="nav-links">
+						<li><a href="/docs">Documentation</a></li>
+						<li><a href="/install">Installation</a></li>
+						<li><a href="/examples">Examples</a></li>
+						<li><a href="https://github.com/johncferguson/gotunnel">GitHub</a></li>
+					</ul>
+				</nav>
+			</div>
+		</header>
+
+		<main>
+			<section class="hero">
+				<div class="container">
+					<h1>gotunnel 🚇</h1>
+					<p>Create secure local tunnels for development without root privileges</p>
+					<div class="cta-buttons">
+						<a href="/install" class="btn btn-primary">Get Started</a>
+						<a href="/docs" class="btn btn-secondary">Documentation</a>
+					</div>
+				</div>
+			</section>
+
+			<section class="features">
+				<div class="container">
+					<h2>Why gotunnel?</h2>
+					<div class="features-grid">
+						<div class="feature">
+							<h3>🔐 No Root Required</h3>
+							<p>Works without administrator privileges, making it perfect for corporate environments and shared systems.</p>
+						</div>
+						<div class="feature">
+							<h3>🌐 Built-in Proxy</h3>
+							<p>No external dependencies needed. Built-in HTTP proxy with support for nginx, Caddy, and custom configurations.</p>
+						</div>
+						<div class="feature">
+							<h3>📊 Full Observability</h3>
+							<p>OpenTelemetry integration with traces, metrics, and logs. Monitor your tunnels with Prometheus and Grafana.</p>
+						</div>
+						<div class="feature">
+							<h3>🏢 Enterprise Ready</h3>
+							<p>Works with corporate firewalls, proxy settings, and security policies. Configuration file support for teams.</p>
+						</div>
+						<div class="feature">
+							<h3>🖥️ Cross-Platform</h3>
+							<p>Native support for macOS, Linux, and Windows with automatic package management integration.</p>
+						</div>
+						<div class="feature">
+							<h3>🐳 Docker Ready</h3>
+							<p>Full containerization support with Docker Compose and Kubernetes deployment configurations.</p>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="install">
+				<div class="container">
+					<h2>Quick Installation</h2>
+					<div class="install-grid">
+						<div class="install-method">
+							<h3>Homebrew (macOS/Linux)</h3>
+							<code>brew tap johncferguson/gotunnel<br>brew install gotunnel</code>
+						</div>
+						<div class="install-method">
+							<h3>Scoop (Windows)</h3>
+							<code>scoop bucket add johncferguson https://github.com/johncferguson/scoop-bucket<br>scoop install gotunnel</code>
+						</div>
+						<div class="install-method">
+							<h3>Install Script (Unix)</h3>
+							<code>curl -sSL https://raw.githubusercontent.com/johncferguson/gotunnel/main/scripts/install.sh | bash</code>
+						</div>
+						<div class="install-method">
+							<h3>Docker</h3>
+							<code>docker run --rm -p 80:80 -p 443:443 ghcr.io/johncferguson/gotunnel:latest</code>
+						</div>
+						<div class="install-method">
+							<h3>Go Install</h3>
+							<code>go install github.com/johncferguson/gotunnel/cmd/gotunnel@latest</code>
+						</div>
+						<div class="install-method">
+							<h3>APT (Debian/Ubuntu)</h3>
+							<code>curl -fsSL https://github.com/johncferguson/gotunnel/releases/latest/download/gotunnel_0.1.0-beta_amd64.deb -o gotunnel.deb<br>sudo dpkg -i gotunnel.deb</code>
+						</div>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<footer>
+			<div class="container">
+				<div class="footer-links">
+					<a href="https://github.com/johncferguson/gotunnel">GitHub</a>
+					<a href="https://github.com/johncferguson/gotunnel/issues">Issues</a>
+					<a href="https://github.com/johncferguson/gotunnel/discussions">Discussions</a>
+					<a href="https://github.com/johncferguson/gotunnel/security">Security</a>
+				</div>
+				<p>&copy; 2024 gotunnel. MIT License. Built with ❤️ and Astro.</p>
+			</div>
+		</footer>
+	</body>
+</html>

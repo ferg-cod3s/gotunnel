@@ -54,7 +54,7 @@ EOF
         echo "  sudo systemctl start gotunnel"
         echo ""
         echo "Configuration: /etc/gotunnel/config.yaml"
-        echo "Documentation: https://github.com/johncferguson/gotunnel"
+        echo "Documentation: https://gotunnel.dev"
         ;;
 esac
 

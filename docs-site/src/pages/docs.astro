@@ -1,0 +1,468 @@
+---
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Documentation - gotunnel 🚇</title>
+		<meta name="description" content="Complete documentation for gotunnel - secure local development tunnels" />
+		<style>
+			:root {
+				--primary: #2563eb;
+				--primary-dark: #1d4ed8;
+				--text: #1f2937;
+				--text-light: #6b7280;
+				--bg: #ffffff;
+				--bg-light: #f9fafb;
+				--border: #e5e7eb;
+			}
+			
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+			
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+				line-height: 1.6;
+				color: var(--text);
+				background: var(--bg);
+			}
+			
+			.container {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 0 2rem;
+			}
+			
+			header {
+				background: var(--bg);
+				border-bottom: 1px solid var(--border);
+				padding: 1rem 0;
+			}
+			
+			nav {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+			
+			.logo {
+				font-size: 1.5rem;
+				font-weight: bold;
+				color: var(--primary);
+				text-decoration: none;
+			}
+			
+			.nav-links {
+				display: flex;
+				gap: 2rem;
+				list-style: none;
+			}
+			
+			.nav-links a {
+				color: var(--text);
+				text-decoration: none;
+				font-weight: 500;
+				transition: color 0.2s;
+			}
+			
+			.nav-links a:hover {
+				color: var(--primary);
+			}
+			
+			.docs-layout {
+				display: grid;
+				grid-template-columns: 250px 1fr;
+				gap: 2rem;
+				padding: 2rem 0;
+				min-height: calc(100vh - 200px);
+			}
+			
+			.sidebar {
+				background: var(--bg-light);
+				padding: 1.5rem;
+				border-radius: 0.5rem;
+				height: fit-content;
+				position: sticky;
+				top: 2rem;
+			}
+			
+			.sidebar h3 {
+				margin-bottom: 1rem;
+				color: var(--primary);
+			}
+			
+			.sidebar ul {
+				list-style: none;
+			}
+			
+			.sidebar li {
+				margin-bottom: 0.5rem;
+			}
+			
+			.sidebar a {
+				color: var(--text);
+				text-decoration: none;
+				padding: 0.5rem;
+				display: block;
+				border-radius: 0.25rem;
+				transition: background 0.2s;
+			}
+			
+			.sidebar a:hover {
+				background: var(--bg);
+			}
+			
+			.content {
+				max-width: none;
+			}
+			
+			.content h1 {
+				font-size: 2.5rem;
+				margin-bottom: 1rem;
+				color: var(--primary);
+			}
+			
+			.content h2 {
+				font-size: 2rem;
+				margin: 2rem 0 1rem 0;
+				color: var(--text);
+				border-bottom: 2px solid var(--border);
+				padding-bottom: 0.5rem;
+			}
+			
+			.content h3 {
+				font-size: 1.5rem;
+				margin: 1.5rem 0 1rem 0;
+				color: var(--primary);
+			}
+			
+			.content p {
+				margin-bottom: 1rem;
+				color: var(--text-light);
+			}
+			
+			.content pre {
+				background: var(--text);
+				color: white;
+				padding: 1rem;
+				border-radius: 0.5rem;
+				overflow-x: auto;
+				margin: 1rem 0;
+				font-family: 'SF Mono', Consolas, monospace;
+			}
+			
+			.content code {
+				background: var(--bg-light);
+				padding: 0.2rem 0.4rem;
+				border-radius: 0.25rem;
+				font-family: 'SF Mono', Consolas, monospace;
+				font-size: 0.9em;
+			}
+			
+			.content pre code {
+				background: none;
+				padding: 0;
+			}
+			
+			.content ul, .content ol {
+				margin: 1rem 0 1rem 2rem;
+			}
+			
+			.content li {
+				margin-bottom: 0.5rem;
+				color: var(--text-light);
+			}
+			
+			.alert {
+				padding: 1rem;
+				border-radius: 0.5rem;
+				margin: 1rem 0;
+				border-left: 4px solid;
+			}
+			
+			.alert-info {
+				background: #eff6ff;
+				border-color: var(--primary);
+				color: var(--primary-dark);
+			}
+			
+			.alert-warning {
+				background: #fef3c7;
+				border-color: #f59e0b;
+				color: #92400e;
+			}
+			
+			@media (max-width: 768px) {
+				.docs-layout {
+					grid-template-columns: 1fr;
+					gap: 1rem;
+				}
+				
+				.sidebar {
+					position: static;
+				}
+				
+				.nav-links {
+					display: none;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<header>
+			<div class="container">
+				<nav>
+					<a href="/" class="logo">gotunnel 🚇</a>
+					<ul class="nav-links">
+						<li><a href="/docs">Documentation</a></li>
+						<li><a href="/install">Installation</a></li>
+						<li><a href="/examples">Examples</a></li>
+						<li><a href="https://github.com/johncferguson/gotunnel">GitHub</a></li>
+					</ul>
+				</nav>
+			</div>
+		</header>
+
+		<main class="container">
+			<div class="docs-layout">
+				<aside class="sidebar">
+					<h3>Getting Started</h3>
+					<ul>
+						<li><a href="#overview">Overview</a></li>
+						<li><a href="#installation">Installation</a></li>
+						<li><a href="#quick-start">Quick Start</a></li>
+					</ul>
+
+					<h3>Configuration</h3>
+					<ul>
+						<li><a href="#cli-options">CLI Options</a></li>
+						<li><a href="#config-file">Config File</a></li>
+						<li><a href="#environment-vars">Environment Variables</a></li>
+					</ul>
+
+					<h3>Deployment</h3>
+					<ul>
+						<li><a href="#docker">Docker</a></li>
+						<li><a href="#kubernetes">Kubernetes</a></li>
+						<li><a href="#system-service">System Service</a></li>
+					</ul>
+
+					<h3>Observability</h3>
+					<ul>
+						<li><a href="#metrics">Metrics</a></li>
+						<li><a href="#tracing">Tracing</a></li>
+						<li><a href="#monitoring">Monitoring</a></li>
+					</ul>
+
+					<h3>Troubleshooting</h3>
+					<ul>
+						<li><a href="#common-issues">Common Issues</a></li>
+						<li><a href="#debug-mode">Debug Mode</a></li>
+					</ul>
+				</aside>
+
+				<div class="content">
+					<h1 id="overview">gotunnel Documentation</h1>
+					
+					<p>gotunnel provides secure HTTP/HTTPS tunnels for local development with built-in proxy capabilities, OpenTelemetry observability, and enterprise-friendly configuration options.</p>
+
+					<div class="alert alert-info">
+						<strong>Beta Software:</strong> gotunnel is currently in beta. While functional and extensively tested, the API and configuration may change before v1.0.
+					</div>
+
+					<h2 id="installation">Installation</h2>
+
+					<h3>Package Managers</h3>
+
+					<p><strong>Homebrew (macOS/Linux):</strong></p>
+					<pre><code>brew tap johncferguson/gotunnel
+brew install gotunnel</code></pre>
+
+					<p><strong>Scoop (Windows):</strong></p>
+					<pre><code>scoop bucket add johncferguson https://github.com/johncferguson/scoop-bucket
+scoop install gotunnel</code></pre>
+
+					<p><strong>APT (Debian/Ubuntu):</strong></p>
+					<pre><code>curl -fsSL https://github.com/johncferguson/gotunnel/releases/latest/download/gotunnel_0.1.0-beta_amd64.deb -o gotunnel.deb
+sudo dpkg -i gotunnel.deb</code></pre>
+
+					<h3>Direct Installation</h3>
+
+					<p><strong>Install Script (Unix):</strong></p>
+					<pre><code>curl -sSL https://raw.githubusercontent.com/johncferguson/gotunnel/main/scripts/install.sh | bash</code></pre>
+
+					<p><strong>Go Install:</strong></p>
+					<pre><code>go install github.com/johncferguson/gotunnel/cmd/gotunnel@latest</code></pre>
+
+					<h2 id="quick-start">Quick Start</h2>
+
+					<h3>Basic Usage</h3>
+
+					<p>Start a tunnel without root privileges:</p>
+					<pre><code># Tunnel your app running on port 3000
+gotunnel --proxy=builtin --no-privilege-check start \
+  --port 3000 --domain myapp --https=false</code></pre>
+
+					<p>Access your app:</p>
+					<ul>
+						<li>Local: <code>http://localhost:3000</code></li>
+						<li>Tunnel: <code>http://myapp.local:8080</code> (with non-privileged ports)</li>
+					</ul>
+
+					<h3>With HTTPS (default)</h3>
+					<pre><code>gotunnel start --port 3000 --domain myapp
+# Access at: https://myapp.local</code></pre>
+
+					<h3>Multiple Tunnels</h3>
+					<pre><code># Terminal 1: Frontend
+gotunnel start --port 3000 --domain frontend
+
+# Terminal 2: API  
+gotunnel start --port 8080 --domain api
+
+# Terminal 3: Database Admin
+gotunnel start --port 5432 --domain pgadmin</code></pre>
+
+					<h2 id="cli-options">CLI Options</h2>
+
+					<h3>Global Flags</h3>
+					<pre><code>gotunnel [global options] command [command options] [arguments...]
+
+GLOBAL OPTIONS:
+   --no-privilege-check         Skip privilege check
+   --sentry-dsn value           Sentry DSN for error tracking [$SENTRY_DSN]
+   --environment value          Environment (development, staging, production) [$ENVIRONMENT]
+   --debug                      Enable debug logging and tracing [$DEBUG]
+   --proxy value                Proxy mode: builtin, nginx, caddy, auto, config, none [$GOTUNNEL_PROXY]
+   --proxy-http-port value      HTTP port for proxy (default: 80) [$GOTUNNEL_PROXY_HTTP_PORT]
+   --proxy-https-port value     HTTPS port for proxy (default: 443) [$GOTUNNEL_PROXY_HTTPS_PORT]</code></pre>
+
+					<h3>Commands</h3>
+					<pre><code>gotunnel start --port 3000 --domain myapp    # Start tunnel
+gotunnel stop myapp                           # Stop specific tunnel  
+gotunnel list                                 # List active tunnels
+gotunnel stop-all                            # Stop all tunnels</code></pre>
+
+					<h2 id="config-file">Configuration File</h2>
+
+					<p>Create <code>~/.config/gotunnel/config.yaml</code>:</p>
+
+					<pre><code>proxy:
+  mode: "builtin"
+  http_port: 8080
+  https_port: 8443
+
+observability:
+  sentry:
+    dsn: "${SENTRY_DSN}"
+  logging:
+    level: "info"
+  tracing:
+    enabled: true
+    sample_rate: 1.0</code></pre>
+
+					<h2 id="environment-vars">Environment Variables</h2>
+
+					<table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
+						<thead>
+							<tr style="background: var(--bg-light);">
+								<th style="padding: 0.75rem; border: 1px solid var(--border); text-align: left;">Variable</th>
+								<th style="padding: 0.75rem; border: 1px solid var(--border); text-align: left;">Description</th>
+								<th style="padding: 0.75rem; border: 1px solid var(--border); text-align: left;">Default</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>ENVIRONMENT</code></td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);">Runtime environment</td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>development</code></td>
+							</tr>
+							<tr style="background: var(--bg-light);">
+								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>SENTRY_DSN</code></td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);">Sentry error tracking</td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);">-</td>
+							</tr>
+							<tr>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>DEBUG</code></td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);">Enable debug logging</td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>false</code></td>
+							</tr>
+							<tr style="background: var(--bg-light);">
+								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>GOTUNNEL_PROXY</code></td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);">Proxy mode</td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>auto</code></td>
+							</tr>
+						</tbody>
+					</table>
+
+					<h2 id="docker">Docker Deployment</h2>
+
+					<h3>Docker Compose</h3>
+					<pre><code>version: '3.8'
+services:
+  gotunnel:
+    image: ghcr.io/johncferguson/gotunnel:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - ENVIRONMENT=production
+      - SENTRY_DSN=${SENTRY_DSN}
+    volumes:
+      - ./certs:/app/certs
+      - ./config:/app/config
+    restart: unless-stopped</code></pre>
+
+					<h2 id="metrics">Metrics</h2>
+
+					<p>gotunnel exposes Prometheus metrics at <code>:9090/metrics</code>:</p>
+
+					<ul>
+						<li><code>gotunnel_tunnels_active</code> - Number of active tunnels</li>
+						<li><code>gotunnel_requests_total</code> - Total HTTP requests processed</li>
+						<li><code>gotunnel_request_duration_seconds</code> - Request processing time</li>
+						<li><code>gotunnel_errors_total</code> - Total errors by type</li>
+					</ul>
+
+					<h2 id="tracing">Tracing</h2>
+
+					<p>Distributed tracing via OpenTelemetry:</p>
+					<pre><code># With OTLP endpoint
+gotunnel --debug start --port 3000 --domain myapp</code></pre>
+
+					<h2 id="common-issues">Common Issues</h2>
+
+					<h3>"Permission denied" on ports 80/443</h3>
+					<pre><code># Use non-privileged ports
+gotunnel --proxy-http-port 8080 --proxy-https-port 8443 start --port 3000 --domain myapp</code></pre>
+
+					<h3>"Domain not accessible"</h3>
+					<pre><code># Check /etc/hosts
+cat /etc/hosts | grep myapp.local
+
+# Check DNS resolution
+dig myapp.local
+nslookup myapp.local</code></pre>
+
+					<div class="alert alert-warning">
+						<strong>Corporate Networks:</strong> Some corporate firewalls may block local tunnel traffic. Use the <code>--proxy=builtin --no-privilege-check</code> flags for maximum compatibility.
+					</div>
+
+					<h2 id="debug-mode">Debug Mode</h2>
+
+					<pre><code># Enable debug logging
+gotunnel --debug start --port 3000 --domain myapp
+
+# Check observability
+curl http://localhost:9090/metrics</code></pre>
+				</div>
+			</div>
+		</main>
+	</body>
+</html>
