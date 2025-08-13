@@ -360,7 +360,7 @@ gotunnel stop-all                            # Stop all tunnels</code></pre>
 
 observability:
   sentry:
-    dsn: "${SENTRY_DSN}"
+    dsn: "YOUR_SENTRY_DSN_HERE"
   logging:
     level: "info"
   tracing:
@@ -413,7 +413,7 @@ services:
       - "443:443"
     environment:
       - ENVIRONMENT=production
-      - SENTRY_DSN=${SENTRY_DSN}
+      - SENTRY_DSN=YOUR_SENTRY_DSN_HERE
     volumes:
       - ./certs:/app/certs
       - ./config:/app/config
