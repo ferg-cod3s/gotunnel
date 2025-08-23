@@ -16,8 +16,14 @@ func runAsUser(name string, arg ...string) error {
 		return fmt.Errorf("failed to get current user: %w", err)
 	}
 
-	uid, _ := strconv.Atoi(originalUser.Uid)
-	gid, _ := strconv.Atoi(originalUser.Gid)
+	uid, err := strconv.Atoi(originalUser.Uid)
+	if err != nil {
+		return fmt.Errorf("failed to parse user ID: %w", err)
+	}
+	gid, err := strconv.Atoi(originalUser.Gid)
+	if err != nil {
+		return fmt.Errorf("failed to parse group ID: %w", err)
+	}
 
 	cmd := exec.Command(name, arg...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{

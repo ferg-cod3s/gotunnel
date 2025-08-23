@@ -22,11 +22,13 @@ tunnels:
   
 # Observability configuration
 observability:
-  # Logging
+  # Logging configuration
   logging:
-    level: "info"  # trace, debug, info, warn, error
+    level: "info"  # debug, info, warn, error
     format: "text"  # text, json
-    sampling: false
+    output: "stdout"  # stdout, stderr, or file path
+    add_source: false  # Include source file and line in logs
+    time_format: "2006-01-02T15:04:05Z07:00"  # RFC3339 format
 
   # Tracing
   tracing:

@@ -19,6 +19,7 @@ import (
 
 	"github.com/johncferguson/gotunnel/internal/cert"
 	"github.com/johncferguson/gotunnel/internal/dnsserver"
+	"github.com/johncferguson/gotunnel/internal/logging"
 	"github.com/johncferguson/gotunnel/internal/proxy"
 )
 
@@ -48,17 +49,26 @@ type Manager struct {
 	certManager  *cert.CertManager
 	hostsBackup  string
 	proxyManager *proxy.Manager
+	logger       *logging.Logger
 	useProxy     bool
 }
 
-func NewManager(certManager *cert.CertManager) *Manager {
-	return NewManagerWithProxy(certManager, nil, false)
+func NewManager(certManager *cert.CertManager, logger *logging.Logger) *Manager {
+	if logger == nil {
+		logger, _ = logging.New(logging.DefaultConfig())
+	}
+	return NewManagerWithProxy(certManager, nil, false, logger)
 }
 
-func NewManagerWithProxy(certManager *cert.CertManager, proxyManager *proxy.Manager, useProxy bool) *Manager {
+func NewManagerWithProxy(certManager *cert.CertManager, proxyManager *proxy.Manager, useProxy bool, logger *logging.Logger) *Manager {
+	if logger == nil {
+		logger, _ = logging.New(logging.DefaultConfig())
+	}
 	// Initialize DNS server when creating a new manager
 	if err := dnsserver.StartDNSServer(); err != nil {
-		log.Printf("Warning: Failed to initialize DNS server: %v", err)
+		logger.Warn("Failed to initialize DNS server", "error", err)
+	} else {
+		logger.Info("DNS server initialized successfully")
 	}
 
 	return &Manager{
@@ -66,6 +76,7 @@ func NewManagerWithProxy(certManager *cert.CertManager, proxyManager *proxy.Mana
 		certManager:  certManager,
 		proxyManager: proxyManager,
 		useProxy:     useProxy,
+		logger:       logger.WithComponent("tunnel"),
 	}
 }
 
@@ -116,7 +127,27 @@ func (m *Manager) StartTunnelWithPorts(ctx context.Context, backendPort int, dom
 		httpPort = 80
 	}
 
-	return m.startTunnelInternal(ctx, backendPort, domain, https, httpPort, httpsPort)
+	m.logger.WithContext(ctx).Info("Starting tunnel",
+		"domain", domain,
+		"backend_port", backendPort,
+		"https", https,
+		"http_port", httpPort,
+		"https_port", httpsPort,
+	)
+
+	startTime := time.Now()
+	err := m.startTunnelInternal(ctx, backendPort, domain, https, httpPort, httpsPort)
+	
+	if err != nil {
+		m.logger.WithContext(ctx).TunnelError(domain, err, map[string]any{
+			"backend_port": backendPort,
+			"duration": time.Since(startTime),
+		})
+		return err
+	}
+
+	m.logger.WithContext(ctx).TunnelStarted(domain, backendPort, fmt.Sprintf("localhost:%d", backendPort))
+	return nil
 }
 
 // StartTunnel starts a tunnel with default ports (production use)

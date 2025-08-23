@@ -52,7 +52,10 @@ func GetOutboundIP() net.IP {
 	}
 	defer conn.Close()
 
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	localAddr, ok := conn.LocalAddr().(*net.UDPAddr)
+	if !ok {
+		return net.ParseIP("127.0.0.1")
+	}
 	return localAddr.IP
 }
 
@@ -135,7 +138,10 @@ func UnregisterDomain(domain string) error {
 
 	// Shutdown the mDNS server for this domain
 	if entry.server != nil {
-		entry.server.Shutdown()
+		if err := entry.server.Shutdown(); err != nil {
+			// Log error but continue with cleanup
+			fmt.Printf("Warning: failed to shutdown mDNS server for %s: %v\n", domain, err)
+		}
 	}
 
 	delete(globalServer.entries, domain)

@@ -79,11 +79,10 @@ func TestBuiltInProxyRouting(t *testing.T) {
 	parts := strings.Split(backendHost, ":")
 	require.Len(t, parts, 2)
 	
-	// Create proxy manager with high port (no privileges needed)
-	// Use a random high port to avoid conflicts
+	// Create proxy manager with dynamic port allocation (port 0)
 	config := ProxyConfig{
 		Mode:     BuiltInProxy,
-		HTTPPort: 15000 + (int(time.Now().UnixNano()) % 1000), // Random port 15000-15999
+		HTTPPort: 0, // Use dynamic port allocation for CI compatibility
 	}
 	manager := NewManager(config)
 
@@ -105,9 +104,10 @@ func TestBuiltInProxyRouting(t *testing.T) {
 	// Give proxy time to start
 	time.Sleep(100 * time.Millisecond)
 
-	// Test proxy request using configured port
+	// Test proxy request using actual allocated port
 	client := &http.Client{Timeout: 5 * time.Second}
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://localhost:%d", config.HTTPPort), nil)
+	actualPort := manager.actualPort
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://localhost:%d", actualPort), nil)
 	require.NoError(t, err)
 	req.Host = "test.local" // Set Host header for routing
 
@@ -123,10 +123,10 @@ func TestBuiltInProxyRouting(t *testing.T) {
 }
 
 func TestBuiltInProxyNotFound(t *testing.T) {
-	// Create proxy manager with high port
+	// Create proxy manager with dynamic port
 	config := ProxyConfig{
 		Mode:     BuiltInProxy,
-		HTTPPort: 9081, // Use different port
+		HTTPPort: 0, // Use dynamic port allocation
 	}
 	manager := NewManager(config)
 
@@ -140,7 +140,7 @@ func TestBuiltInProxyNotFound(t *testing.T) {
 
 	// Test request to unknown route
 	client := &http.Client{Timeout: 5 * time.Second}
-	req, err := http.NewRequest("GET", "http://localhost:9081", nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://localhost:%d", manager.actualPort), nil)
 	require.NoError(t, err)
 	req.Host = "unknown.local"
 
@@ -159,7 +159,7 @@ func TestBuiltInProxyNotFound(t *testing.T) {
 func TestProxyLifecycle(t *testing.T) {
 	config := ProxyConfig{
 		Mode:     BuiltInProxy,
-		HTTPPort: 9082,
+		HTTPPort: 0, // Use dynamic port allocation
 	}
 	manager := NewManager(config)
 
@@ -180,7 +180,7 @@ func TestProxyLifecycle(t *testing.T) {
 
 	// Verify connection fails after shutdown
 	client := &http.Client{Timeout: 1 * time.Second}
-	_, err = client.Get("http://localhost:9082")
+	_, err = client.Get(fmt.Sprintf("http://localhost:%d", manager.actualPort))
 	assert.Error(t, err) // Should fail to connect
 }
 

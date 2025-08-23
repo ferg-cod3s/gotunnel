@@ -18,6 +18,8 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/johncferguson/gotunnel/internal/logging"
 )
 
 const (
@@ -27,12 +29,13 @@ const (
 
 // Provider manages all observability concerns: logging, tracing, metrics, and error tracking
 type Provider struct {
-	logger       *slog.Logger
-	tracer       trace.Tracer
-	meter        metric.Meter
+	logger         *logging.Logger
+	slogger        *slog.Logger // Keep slog for backward compatibility
+	tracer         trace.Tracer
+	meter          metric.Meter
 	tracerProvider *sdktrace.TracerProvider
-	resource     *resource.Resource
-	config       Config
+	resource       *resource.Resource
+	config         Config
 }
 
 // Config holds observability configuration
@@ -45,6 +48,7 @@ type Config struct {
 	LogLevel         slog.Level
 	LogFormat        string // "json" or "text"
 	Debug            bool   // Enable debug mode
+	Logging          *logging.Config // Structured logging configuration
 }
 
 // NewProvider creates a new observability provider with Sentry OpenTelemetry collection
@@ -67,6 +71,27 @@ func NewProvider(config Config) (*Provider, error) {
 	}
 	if config.LogFormat == "" {
 		config.LogFormat = "text"
+	}
+	if config.Logging == nil {
+		config.Logging = logging.DefaultConfig()
+		// Override with observability config values
+		if config.Debug {
+			config.Logging.Level = logging.LevelDebug
+		} else if config.LogLevel == slog.LevelDebug {
+			config.Logging.Level = logging.LevelDebug
+		} else if config.LogLevel == slog.LevelWarn {
+			config.Logging.Level = logging.LevelWarn
+		} else if config.LogLevel == slog.LevelError {
+			config.Logging.Level = logging.LevelError
+		} else {
+			config.Logging.Level = logging.LevelInfo
+		}
+		
+		if config.LogFormat == "json" {
+			config.Logging.Format = logging.FormatJSON
+		} else {
+			config.Logging.Format = logging.FormatText
+		}
 	}
 
 	// Validate Sentry DSN if provided
@@ -173,8 +198,23 @@ func (p *Provider) initTracing() error {
 
 // initLogging initializes structured logging with OpenTelemetry correlation
 func (p *Provider) initLogging() {
+	// Create structured logger
+	structuredLogger, err := logging.New(p.config.Logging)
+	if err != nil {
+		// Fallback to basic logger if structured logger fails
+		p.logger = nil
+		structuredLogger = nil
+	} else {
+		// Add service context to logger
+		p.logger = structuredLogger.WithFields(map[string]any{
+			"service": p.config.ServiceName,
+			"version": p.config.ServiceVersion,
+			"environment": p.config.Environment,
+		})
+	}
+	
+	// Keep backward compatibility with slog
 	var handler slog.Handler
-
 	opts := &slog.HandlerOptions{
 		Level: p.config.LogLevel,
 		AddSource: p.config.Environment == "development",
@@ -188,7 +228,7 @@ func (p *Provider) initLogging() {
 	}
 
 	// Wrap with trace correlation
-	p.logger = slog.New(&traceHandler{
+	p.slogger = slog.New(&traceHandler{
 		handler: handler,
 	})
 }
@@ -222,10 +262,6 @@ func (h *traceHandler) WithGroup(name string) slog.Handler {
 	return &traceHandler{handler: h.handler.WithGroup(name)}
 }
 
-// Logger returns the structured logger
-func (p *Provider) Logger() *slog.Logger {
-	return p.logger
-}
 
 // Tracer returns the OpenTelemetry tracer
 func (p *Provider) Tracer() trace.Tracer {
@@ -242,9 +278,34 @@ func (p *Provider) StartSpan(ctx context.Context, name string, opts ...trace.Spa
 	return p.tracer.Start(ctx, name, opts...)
 }
 
-// LogWithSpan logs a message with trace context
+// Logger returns the structured logger with trace context
+func (p *Provider) Logger() *logging.Logger {
+	if p.logger == nil {
+		// Fallback to a default logger if not initialized
+		logger, _ := logging.New(logging.DefaultConfig())
+		return logger
+	}
+	return p.logger
+}
+
+// LoggerWithContext returns a logger with trace context from the provided context
+func (p *Provider) LoggerWithContext(ctx context.Context) *logging.Logger {
+	if p.logger == nil {
+		// Fallback to a default logger if not initialized
+		logger, _ := logging.New(logging.DefaultConfig())
+		return logger.WithContext(ctx)
+	}
+	return p.logger.WithContext(ctx)
+}
+
+// SLogger returns the slog logger for backward compatibility
+func (p *Provider) SLogger() *slog.Logger {
+	return p.slogger
+}
+
+// LogWithSpan logs a message with trace context (backward compatibility)
 func (p *Provider) LogWithSpan(ctx context.Context, level slog.Level, msg string, attrs ...slog.Attr) {
-	p.logger.LogAttrs(ctx, level, msg, attrs...)
+	p.slogger.LogAttrs(ctx, level, msg, attrs...)
 }
 
 // CaptureError sends an error to Sentry with trace correlation

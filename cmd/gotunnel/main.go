@@ -13,6 +13,7 @@ import (
 
 	"github.com/johncferguson/gotunnel/internal/cert"
 	"github.com/johncferguson/gotunnel/internal/dnsserver"
+	"github.com/johncferguson/gotunnel/internal/logging"
 	"github.com/johncferguson/gotunnel/internal/observability"
 	"github.com/johncferguson/gotunnel/internal/privilege"
 	"github.com/johncferguson/gotunnel/internal/proxy"
@@ -83,6 +84,20 @@ func main() {
 			},
 		},
 		Before: func(c *cli.Context) error {
+			// Configure logging
+			logConfig := &logging.Config{
+				Level:      logging.LevelInfo,
+				Format:     logging.FormatText,
+				Output:     "stdout",
+				AddSource:  false,
+				TimeFormat: time.RFC3339,
+			}
+			
+			if c.Bool("debug") {
+				logConfig.Level = logging.LevelDebug
+				logConfig.AddSource = true
+			}
+			
 			// Initialize observability first
 			obsConfig := observability.Config{
 				ServiceName:      "gotunnel",
@@ -93,6 +108,7 @@ func main() {
 				LogLevel:         slog.LevelInfo,
 				LogFormat:        "text",
 				Debug:            c.Bool("debug"),
+				Logging:          logConfig,
 			}
 
 			if obsConfig.Debug {
@@ -117,9 +133,9 @@ func main() {
 			ctx, span := obsProvider.StartSpan(ctx, "gotunnel.startup")
 			defer span.End()
 
-			obsProvider.Logger().InfoContext(ctx, "Starting gotunnel",
-				slog.String("version", obsConfig.ServiceVersion),
-				slog.String("environment", obsConfig.Environment),
+			obsProvider.Logger().WithContext(ctx).Info("Starting gotunnel",
+				"version", obsConfig.ServiceVersion,
+				"environment", obsConfig.Environment,
 			)
 
 			if !c.Bool("no-privilege-check") {
@@ -172,21 +188,21 @@ func main() {
 			
 			// Create tunnel manager with proxy integration
 			if useProxy && proxyManager != nil {
-				manager = tunnel.NewManagerWithProxy(certManager, proxyManager, true)
+				manager = tunnel.NewManagerWithProxy(certManager, proxyManager, true, obsProvider.Logger())
 				
 				// Start the proxy system
 				if err := proxyManager.Start(); err != nil {
-					obsProvider.Logger().ErrorContext(ctx, "Failed to start proxy", slog.Any("error", err))
+					obsProvider.Logger().WithContext(ctx).Error("Failed to start proxy", "error", err)
 					metrics.RecordError(ctx, "proxy", "startup", err)
 					// Don't fail completely, fall back to direct mode
-					manager = tunnel.NewManager(certManager)
+					manager = tunnel.NewManager(certManager, obsProvider.Logger())
 					proxyManager = nil
-					obsProvider.Logger().WarnContext(ctx, "Falling back to direct tunnel mode")
+					obsProvider.Logger().WithContext(ctx).Warn("Falling back to direct tunnel mode")
 				} else {
-					obsProvider.Logger().InfoContext(ctx, "Proxy system started successfully")
+					obsProvider.Logger().WithContext(ctx).Info("Proxy system started successfully")
 				}
 			} else {
-				manager = tunnel.NewManager(certManager)
+				manager = tunnel.NewManager(certManager, obsProvider.Logger())
 			}
 
 			// Set up DNS server

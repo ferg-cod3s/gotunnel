@@ -189,6 +189,7 @@ jobs:
       with:
         p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
         p12-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+      continue-on-error: true  # Don't fail if certificates not configured
         
     - name: Build binary
       env:
@@ -211,8 +212,15 @@ jobs:
         MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
       run: |
         BINARY_NAME="gotunnel-${{ steps.version.outputs.version }}-${{ matrix.suffix }}"
-        chmod +x scripts/sign-macos.sh
-        ./scripts/sign-macos.sh "${BINARY_NAME}" "${{ matrix.goos }}"
+        if [ -n "$MACOS_SIGN_IDENTITY" ]; then
+          echo "✅ Signing macOS binary with identity: $MACOS_SIGN_IDENTITY"
+          codesign --force --options runtime --sign "$MACOS_SIGN_IDENTITY" "${BINARY_NAME}"
+          echo "✅ Binary signed successfully"
+        else
+          echo "⚠️  macOS code signing skipped - secrets not configured"
+          echo "💡 Add MACOS_SIGN_IDENTITY secret for code signing"
+        fi
+      continue-on-error: true  # Don't fail builds if signing fails
         
     - name: Create checksums
       run: |
@@ -275,7 +283,7 @@ jobs:
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
           type=semver,pattern={{major}}
-          type=sha,prefix={{branch}}-
+          type=sha,prefix=commit-
           
     - name: Build and push Docker image
       uses: docker/build-push-action@v5

@@ -79,7 +79,9 @@ func TestRegisterDomainValidation(t *testing.T) {
 					if len(serviceName) > 6 && serviceName[len(serviceName)-6:] == ".local" {
 						serviceName = serviceName[:len(serviceName)-6]
 					}
-					_ = server.UnregisterDomain(serviceName)
+					if cleanupErr := server.UnregisterDomain(serviceName); cleanupErr != nil {
+						t.Logf("Warning: failed to cleanup service %s: %v", serviceName, cleanupErr)
+					}
 				}
 			}
 		})
@@ -94,7 +96,11 @@ func TestDiscoverServices(t *testing.T) {
 	// Register a service
 	err := server.RegisterDomain(domain)
 	require.NoError(t, err)
-	defer server.UnregisterDomain(serviceName) // Use service name without .local
+	defer func() {
+		if err := server.UnregisterDomain(serviceName); err != nil {
+			t.Logf("Warning: failed to unregister service %s: %v", serviceName, err)
+		}
+	}()
 
 	// Give some time for the service to be advertised
 	time.Sleep(100 * time.Millisecond)
