@@ -3,10 +3,9 @@
   "mcp": {
     "conexus": {
       "type": "local",
-      "command": ["bunx", "@agentic-conexus/mcp"],
+      "command": ["conexus", "serve"],
       "enabled": true,
       "environment": {
-        "CONEXUS_PORT": "0",
         "CONEXUS_DB_PATH": "{env:CONEXUS_DB_PATH:./data/conexus.db}",
         "CONEXUS_LOG_LEVEL": "info",
         "CONEXUS_SENTRY_ENABLED": "true",
