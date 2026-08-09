@@ -1,4 +1,5 @@
 ---
+const canonicalURL = new URL(Astro.url.pathname, Astro.site).href;
 ---
 
 <html lang="en">
@@ -9,6 +10,13 @@
 		<meta name="generator" content={Astro.generator} />
 		<title>Installation - gotunnel 🚇</title>
 		<meta name="description" content="Install gotunnel on your system using package managers or direct installation methods" />
+		<link rel="canonical" href={canonicalURL} />
+		<meta property="og:type" content="website" />
+		<meta property="og:url" content={canonicalURL} />
+		<meta property="og:title" content="Installation - gotunnel 🚇" />
+		<meta property="og:description" content="Install gotunnel on your system using package managers or direct installation methods" />
+		<meta name="twitter:card" content="summary" />
+		<meta name="twitter:url" content={canonicalURL} />
 		<style>
 			:root {
 				--primary: #2563eb;
