@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/johncferguson/gotunnel/internal/cert"
-	"github.com/johncferguson/gotunnel/internal/logging"
+	"github.com/v1truv1us/gotunnel/internal/cert"
+	"github.com/v1truv1us/gotunnel/internal/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

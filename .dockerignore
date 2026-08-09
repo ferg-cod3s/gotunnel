@@ -1,0 +1,12 @@
+.git
+.github
+.opencode
+bin
+certs
+data
+docs-site/node_modules
+docs-site/dist
+*.md
+*.bat
+gotunnel
+gotunnel.exe

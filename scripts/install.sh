@@ -2,9 +2,9 @@
 set -e
 
 # gotunnel installation script
-# Usage: curl -sSL https://raw.githubusercontent.com/johncferguson/gotunnel/main/scripts/install.sh | bash
+# Usage: curl -sSL https://raw.githubusercontent.com/v1truv1us/gotunnel/main/scripts/install.sh | bash
 
-REPO="johncferguson/gotunnel"
+REPO="v1truv1us/gotunnel"
 INSTALL_DIR="/usr/local/bin"
 BINARY_NAME="gotunnel"
 

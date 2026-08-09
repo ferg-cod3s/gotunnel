@@ -18,6 +18,6 @@ Description: Create secure local tunnels for development without root privileges
   - Cross-platform support
   - Docker and Kubernetes ready
   - Automatic mDNS discovery
-Homepage: https://github.com/johncferguson/gotunnel
+Homepage: https://github.com/v1truv1us/gotunnel
 Depends: libc6 (>= 2.17)
 Recommends: ca-certificates

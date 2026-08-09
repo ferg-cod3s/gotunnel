@@ -328,7 +328,7 @@ spec:
     spec:
       containers:
       - name: gotunnel
-        image: ghcr.io/johncferguson/gotunnel
+        image: ghcr.io/v1truv1us/gotunnel
       - name: app
         image: myapp:latest
 ```

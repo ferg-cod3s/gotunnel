@@ -4,11 +4,11 @@
 
 class Gotunnel < Formula
   desc "Create secure local tunnels for development without root privileges (signed & notarized)"
-  homepage "https://github.com/johncferguson/gotunnel"
-  url "https://github.com/johncferguson/gotunnel/archive/v0.1.0-beta.tar.gz"
+  homepage "https://github.com/v1truv1us/gotunnel"
+  url "https://github.com/v1truv1us/gotunnel/archive/v0.1.0-beta.tar.gz"
   sha256 "PLACEHOLDER_SHA256"
   license "MIT"
-  head "https://github.com/johncferguson/gotunnel.git", branch: "main"
+  head "https://github.com/v1truv1us/gotunnel.git", branch: "main"
 
   depends_on "go" => :build
 

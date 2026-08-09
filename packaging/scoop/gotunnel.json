@@ -1,15 +1,15 @@
 {
     "version": "0.1.0-beta",
     "description": "Create secure local tunnels for development without root privileges",
-    "homepage": "https://github.com/johncferguson/gotunnel",
+    "homepage": "https://github.com/v1truv1us/gotunnel",
     "license": "MIT",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/johncferguson/gotunnel/releases/download/v0.1.0-beta/gotunnel-v0.1.0-beta-windows-amd64.exe",
+            "url": "https://github.com/v1truv1us/gotunnel/releases/download/v0.1.0-beta/gotunnel-v0.1.0-beta-windows-amd64.exe",
             "hash": "PLACEHOLDER_SHA256"
         },
         "arm64": {
-            "url": "https://github.com/johncferguson/gotunnel/releases/download/v0.1.0-beta/gotunnel-v0.1.0-beta-windows-arm64.exe",
+            "url": "https://github.com/v1truv1us/gotunnel/releases/download/v0.1.0-beta/gotunnel-v0.1.0-beta-windows-arm64.exe",
             "hash": "PLACEHOLDER_SHA256"
         }
     },
@@ -20,15 +20,15 @@
         ]
     ],
     "checkver": {
-        "github": "https://github.com/johncferguson/gotunnel"
+        "github": "https://github.com/v1truv1us/gotunnel"
     },
     "autoupdate": {
         "architecture": {
             "64bit": {
-                "url": "https://github.com/johncferguson/gotunnel/releases/download/v$version/gotunnel-v$version-windows-amd64.exe"
+                "url": "https://github.com/v1truv1us/gotunnel/releases/download/v$version/gotunnel-v$version-windows-amd64.exe"
             },
             "arm64": {
-                "url": "https://github.com/johncferguson/gotunnel/releases/download/v$version/gotunnel-v$version-windows-arm64.exe"
+                "url": "https://github.com/v1truv1us/gotunnel/releases/download/v$version/gotunnel-v$version-windows-arm64.exe"
             }
         }
     },

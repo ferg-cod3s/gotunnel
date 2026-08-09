@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 
 $packageName = 'gotunnel'
 $toolsDir = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
-$url64 = 'https://github.com/johncferguson/gotunnel/releases/download/v0.1.0-beta/gotunnel-v0.1.0-beta-windows-amd64.exe'
+$url64 = 'https://github.com/v1truv1us/gotunnel/releases/download/v0.1.0-beta/gotunnel-v0.1.0-beta-windows-amd64.exe'
 $checksum64 = 'PLACEHOLDER_SHA256'
 
 $packageArgs = @{

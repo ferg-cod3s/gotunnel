@@ -19,7 +19,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/johncferguson/gotunnel/internal/logging"
+	"github.com/v1truv1us/gotunnel/internal/logging"
 )
 
 const (

@@ -73,7 +73,7 @@ func RegisterDomain(domain string, port int) error {
 	// Make sure hostname is a proper FQDN
 	host = strings.TrimSuffix(host, ".")      // Remove any trailing dot
 	host = strings.TrimSuffix(host, ".local") // Remove .local if present
-	host = host + ".local."                   // Add .local. to make it a proper FQDN
+	host = host + ".local."                       // mDNS uses .local TLD
 
 	// Remove .local suffix if present for service name
 	serviceName := strings.TrimSuffix(domain, ".local")
@@ -125,7 +125,7 @@ func RegisterDomain(domain string, port int) error {
 // UnregisterDomain removes a domain from the DNS server
 func UnregisterDomain(domain string) error {
 	if globalServer == nil {
-		// return fmt.Errorf("DNS server not initialized")
+		return fmt.Errorf("DNS server not initialized")
 	}
 
 	globalServer.mu.Lock()

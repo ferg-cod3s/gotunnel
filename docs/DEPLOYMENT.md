@@ -104,8 +104,8 @@ checksums.txt.sig
 # Formula/gotunnel.rb
 class Gotunnel < Formula
   desc "Secure local tunnels for development"
-  homepage "https://github.com/johncferguson/gotunnel"
-  url "https://github.com/johncferguson/gotunnel/archive/v1.0.0.tar.gz"
+  homepage "https://github.com/v1truv1us/gotunnel"
+  url "https://github.com/v1truv1us/gotunnel/archive/v1.0.0.tar.gz"
   sha256 "..."
   
   depends_on "go" => :build
@@ -122,9 +122,9 @@ end
 {
     "version": "1.0.0",
     "description": "Secure local tunnels for development",
-    "homepage": "https://github.com/johncferguson/gotunnel",
+    "homepage": "https://github.com/v1truv1us/gotunnel",
     "license": "MIT",
-    "url": "https://github.com/johncferguson/gotunnel/releases/download/v1.0.0/gotunnel-v1.0.0-windows-amd64.exe",
+    "url": "https://github.com/v1truv1us/gotunnel/releases/download/v1.0.0/gotunnel-v1.0.0-windows-amd64.exe",
     "hash": "...",
     "bin": "gotunnel.exe"
 }

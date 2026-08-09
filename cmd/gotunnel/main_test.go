@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johncferguson/gotunnel/internal/cert"
-	"github.com/johncferguson/gotunnel/internal/logging"
-	"github.com/johncferguson/gotunnel/internal/tunnel"
+	"github.com/v1truv1us/gotunnel/internal/cert"
+	"github.com/v1truv1us/gotunnel/internal/logging"
+	"github.com/v1truv1us/gotunnel/internal/tunnel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -1,11 +1,11 @@
 # gotunnel 🚇 
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/johncferguson/gotunnel)](https://golang.org/)
-[![Release](https://img.shields.io/github/v/release/johncferguson/gotunnel?include_prereleases)](https://github.com/johncferguson/gotunnel/releases)
-[![CI/CD](https://github.com/johncferguson/gotunnel/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/johncferguson/gotunnel/actions)
-[![Docker](https://img.shields.io/badge/docker-available-blue.svg)](https://ghcr.io/johncferguson/gotunnel)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/v1truv1us/gotunnel)](https://golang.org/)
+[![Release](https://img.shields.io/github/v/release/v1truv1us/gotunnel?include_prereleases)](https://github.com/v1truv1us/gotunnel/releases)
+[![CI/CD](https://github.com/v1truv1us/gotunnel/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/v1truv1us/gotunnel/actions)
+[![Docker](https://img.shields.io/badge/docker-available-blue.svg)](https://ghcr.io/v1truv1us/gotunnel)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Report Card](https://goreportcard.com/badge/github.com/johncferguson/gotunnel)](https://goreportcard.com/report/github.com/johncferguson/gotunnel)
+[![Go Report Card](https://goreportcard.com/badge/github.com/v1truv1us/gotunnel)](https://goreportcard.com/report/github.com/v1truv1us/gotunnel)
 
 **Create secure local tunnels for development without root privileges**
 
@@ -30,19 +30,19 @@ gotunnel provides secure HTTP/HTTPS tunnels for local development with built-in 
 
 **Homebrew (macOS/Linux):**
 ```bash
-brew tap ferg-cod3s/gotunnel
+brew tap v1truv1us/gotunnel
 brew install gotunnel
 ```
 
 **Scoop (Windows):**
 ```powershell
-scoop bucket add ferg-cod3s https://github.com/ferg-cod3s/scoop-bucket
+scoop bucket add v1truv1us https://github.com/v1truv1us/scoop-bucket
 scoop install gotunnel
 ```
 
 **APT (Debian/Ubuntu):**
 ```bash
-curl -fsSL https://github.com/johncferguson/gotunnel/releases/latest/download/gotunnel_0.1.0-beta_amd64.deb -o gotunnel.deb
+curl -fsSL https://github.com/v1truv1us/gotunnel/releases/latest/download/gotunnel_0.1.0-beta_amd64.deb -o gotunnel.deb
 sudo dpkg -i gotunnel.deb
 ```
 
@@ -56,17 +56,17 @@ yay -S gotunnel
 
 **Install Script (Unix):**
 ```bash
-curl -sSL https://raw.githubusercontent.com/johncferguson/gotunnel/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/v1truv1us/gotunnel/main/scripts/install.sh | bash
 ```
 
 **Go Install:**
 ```bash
-go install github.com/johncferguson/gotunnel/cmd/gotunnel@latest
+go install github.com/v1truv1us/gotunnel/cmd/gotunnel@latest
 ```
 
 **Docker:**
 ```bash
-docker run --rm -p 80:80 -p 443:443 ghcr.io/johncferguson/gotunnel:latest
+docker run --rm -p 80:80 -p 443:443 ghcr.io/v1truv1us/gotunnel:latest
 ```
 
 ### Basic Usage
@@ -131,7 +131,7 @@ gotunnel --proxy=config start --port 3000 --domain myapp
 version: '3.8'
 services:
   gotunnel:
-    image: ghcr.io/johncferguson/gotunnel:latest
+    image: ghcr.io/v1truv1us/gotunnel:latest
     ports:
       - "80:80"
       - "443:443"
@@ -173,7 +173,7 @@ spec:
     spec:
       containers:
       - name: gotunnel
-        image: ghcr.io/johncferguson/gotunnel:latest
+        image: ghcr.io/v1truv1us/gotunnel:latest
         ports:
         - containerPort: 80
         - containerPort: 443
@@ -333,7 +333,7 @@ brew services stop gotunnel
 ### Building from Source
 
 ```bash
-git clone https://github.com/johncferguson/gotunnel.git
+git clone https://github.com/v1truv1us/gotunnel.git
 cd gotunnel
 go mod tidy
 go build ./cmd/gotunnel
@@ -370,7 +370,7 @@ The project uses GitHub Actions for:
 
 ### Reporting Vulnerabilities
 
-Please report security vulnerabilities via [GitHub Security Advisories](https://github.com/johncferguson/gotunnel/security/advisories/new).
+Please report security vulnerabilities via [GitHub Security Advisories](https://github.com/v1truv1us/gotunnel/security/advisories/new).
 
 ### Security Features
 
@@ -405,9 +405,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 - 📚 [Documentation](https://gotunnel.dev)
-- 🐛 [Issue Tracker](https://github.com/johncferguson/gotunnel/issues)
-- 💬 [Discussions](https://github.com/johncferguson/gotunnel/discussions)
-- 🔐 [Security](https://github.com/johncferguson/gotunnel/security)
+- 🐛 [Issue Tracker](https://github.com/v1truv1us/gotunnel/issues)
+- 💬 [Discussions](https://github.com/v1truv1us/gotunnel/discussions)
+- 🔐 [Security](https://github.com/v1truv1us/gotunnel/security)
 
 ## 🙏 Acknowledgments
 

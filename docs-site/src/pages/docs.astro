@@ -8,13 +8,16 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site).href;
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Documentation - gotunnel 🚇</title>
-		<meta name="description" content="Complete documentation for gotunnel - secure local development tunnels" />
+		<title>Documentation - gotunnel</title>
+		<meta name="description" content="Complete documentation for gotunnel: installation, CLI options, configuration, and troubleshooting for local HTTPS development tunnels." />
+		<meta name="robots" content="index, follow" />
+		<meta name="theme-color" content="#2563eb" />
 		<link rel="canonical" href={canonicalURL} />
 		<meta property="og:type" content="website" />
 		<meta property="og:url" content={canonicalURL} />
-		<meta property="og:title" content="Documentation - gotunnel 🚇" />
-		<meta property="og:description" content="Complete documentation for gotunnel - secure local development tunnels" />
+		<meta property="og:site_name" content="gotunnel" />
+		<meta property="og:title" content="Documentation - gotunnel" />
+		<meta property="og:description" content="Complete documentation for gotunnel - local HTTPS development tunnels without sudo." />
 		<meta name="twitter:card" content="summary" />
 		<meta name="twitter:url" content={canonicalURL} />
 		<style>
@@ -230,8 +233,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site).href;
 					<ul class="nav-links">
 						<li><a href="/docs">Documentation</a></li>
 						<li><a href="/install">Installation</a></li>
-						<li><a href="/examples">Examples</a></li>
-						<li><a href="https://github.com/johncferguson/gotunnel">GitHub</a></li>
+						<li><a href="https://github.com/v1truv1us/gotunnel">GitHub</a></li>
 					</ul>
 				</nav>
 			</div>
@@ -289,53 +291,54 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site).href;
 					<h3>Package Managers</h3>
 
 					<p><strong>Homebrew (macOS/Linux):</strong></p>
-					<pre><code>brew tap ferg-cod3s/gotunnel
+					<pre><code>brew tap v1truv1us/gotunnel
 brew install gotunnel</code></pre>
 
 					<p><strong>Scoop (Windows):</strong></p>
-					<pre><code>scoop bucket add ferg-cod3s https://github.com/ferg-cod3s/scoop-bucket
+					<pre><code>scoop bucket add v1truv1us https://github.com/v1truv1us/scoop-bucket
 scoop install gotunnel</code></pre>
 
 					<p><strong>APT (Debian/Ubuntu):</strong></p>
-					<pre><code>curl -fsSL https://github.com/johncferguson/gotunnel/releases/latest/download/gotunnel_0.1.0-beta_amd64.deb -o gotunnel.deb
+					<pre><code>curl -fsSL https://github.com/v1truv1us/gotunnel/releases/latest/download/gotunnel_0.1.0-beta_amd64.deb -o gotunnel.deb
 sudo dpkg -i gotunnel.deb</code></pre>
 
 					<h3>Direct Installation</h3>
 
 					<p><strong>Install Script (Unix):</strong></p>
-					<pre><code>curl -sSL https://raw.githubusercontent.com/johncferguson/gotunnel/main/scripts/install.sh | bash</code></pre>
+					<pre><code>curl -sSL https://raw.githubusercontent.com/v1truv1us/gotunnel/main/scripts/install.sh | bash</code></pre>
 
 					<p><strong>Go Install:</strong></p>
-					<pre><code>go install github.com/johncferguson/gotunnel/cmd/gotunnel@latest</code></pre>
+					<pre><code>go install github.com/v1truv1us/gotunnel/cmd/gotunnel@latest</code></pre>
 
 					<h2 id="quick-start">Quick Start</h2>
 
 					<h3>Basic Usage</h3>
 
-					<p>Start a tunnel without root privileges:</p>
+					<p>Start a tunnel (no sudo needed):</p>
 					<pre><code># Tunnel your app running on port 3000
-gotunnel --proxy=builtin --no-privilege-check start \
-  --port 3000 --domain myapp --https=false</code></pre>
+gotunnel start -p 3000 -d myapp
+
+# Access at https://myapp.localhost:8443</code></pre>
 
 					<p>Access your app:</p>
 					<ul>
 						<li>Local: <code>http://localhost:3000</code></li>
-						<li>Tunnel: <code>http://myapp.local:8080</code> (with non-privileged ports)</li>
+						<li>Tunnel: <code>https://myapp.localhost:8443</code></li>
 					</ul>
 
-					<h3>With HTTPS (default)</h3>
-					<pre><code>gotunnel start --port 3000 --domain myapp
-# Access at: https://myapp.local</code></pre>
+					<h3>With HTTP only (no TLS)</h3>
+					<pre><code>gotunnel start -p 3000 -d myapp --https=false
+# Access at: http://myapp.localhost:8080</code></pre>
 
 					<h3>Multiple Tunnels</h3>
 					<pre><code># Terminal 1: Frontend
-gotunnel start --port 3000 --domain frontend
+gotunnel start -p 3000 -d frontend
 
 # Terminal 2: API  
-gotunnel start --port 8080 --domain api
+gotunnel start -p 8080 -d api
 
 # Terminal 3: Database Admin
-gotunnel start --port 5432 --domain pgadmin</code></pre>
+gotunnel start -p 5432 -d pgadmin</code></pre>
 
 					<h2 id="cli-options">CLI Options</h2>
 
@@ -344,12 +347,12 @@ gotunnel start --port 5432 --domain pgadmin</code></pre>
 
 GLOBAL OPTIONS:
    --no-privilege-check         Skip privilege check
-   --sentry-dsn value           Sentry DSN for error tracking [$SENTRY_DSN]
+   --sentry-dsn value           Sentry DSN for error tracking (opt-in) [$GOTUNNEL_SENTRY_DSN, $SENTRY_DSN]
    --environment value          Environment (development, staging, production) [$ENVIRONMENT]
    --debug                      Enable debug logging and tracing [$DEBUG]
    --proxy value                Proxy mode: builtin, nginx, caddy, auto, config, none [$GOTUNNEL_PROXY]
-   --proxy-http-port value      HTTP port for proxy (default: 80) [$GOTUNNEL_PROXY_HTTP_PORT]
-   --proxy-https-port value     HTTPS port for proxy (default: 443) [$GOTUNNEL_PROXY_HTTPS_PORT]</code></pre>
+   --proxy-http-port value      HTTP port for proxy (default: 8080) [$GOTUNNEL_PROXY_HTTP_PORT]
+   --proxy-https-port value     HTTPS port for proxy (default: 8443) [$GOTUNNEL_PROXY_HTTPS_PORT]</code></pre>
 
 					<h3>Commands</h3>
 					<pre><code>gotunnel start --port 3000 --domain myapp    # Start tunnel
@@ -368,11 +371,11 @@ gotunnel stop-all                            # Stop all tunnels</code></pre>
 
 observability:
   sentry:
-    dsn: "YOUR_SENTRY_DSN_HERE"
+    dsn: ""  # Set to enable Sentry (opt-in)
   logging:
     level: "info"
   tracing:
-    enabled: true
+    enabled: false
     sample_rate: 1.0</code></pre>
 
 					<h2 id="environment-vars">Environment Variables</h2>
@@ -392,9 +395,9 @@ observability:
 								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>development</code></td>
 							</tr>
 							<tr style="background: var(--bg-light);">
-								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>SENTRY_DSN</code></td>
-								<td style="padding: 0.75rem; border: 1px solid var(--border);">Sentry error tracking</td>
-								<td style="padding: 0.75rem; border: 1px solid var(--border);">-</td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>GOTUNNEL_SENTRY_DSN</code></td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);">Sentry error tracking (opt-in)</td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);">disabled</td>
 							</tr>
 							<tr>
 								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>DEBUG</code></td>
@@ -415,13 +418,12 @@ observability:
 					<pre><code>version: '3.8'
 services:
   gotunnel:
-    image: ghcr.io/johncferguson/gotunnel:latest
+    image: ghcr.io/v1truv1us/gotunnel:latest
     ports:
-      - "80:80"
-      - "443:443"
+      - "8080:8080"
+      - "8443:8443"
     environment:
       - ENVIRONMENT=production
-      - SENTRY_DSN=YOUR_SENTRY_DSN_HERE
     volumes:
       - ./certs:/app/certs
       - ./config:/app/config
@@ -447,19 +449,16 @@ gotunnel --debug start --port 3000 --domain myapp</code></pre>
 					<h2 id="common-issues">Common Issues</h2>
 
 					<h3>"Permission denied" on ports 80/443</h3>
-					<pre><code># Use non-privileged ports
-gotunnel --proxy-http-port 8080 --proxy-https-port 8443 start --port 3000 --domain myapp</code></pre>
+					<p>gotunnel uses non-privileged ports (8080/8443) by default, so this should not occur. If you override with <code>--proxy-http-port 80</code>, you need sudo or <code>setcap</code>.</p>
 
 					<h3>"Domain not accessible"</h3>
-					<pre><code># Check /etc/hosts
-cat /etc/hosts | grep myapp.local
-
-# Check DNS resolution
-dig myapp.local
-nslookup myapp.local</code></pre>
+					<p><code>.localhost</code> domains resolve to 127.0.0.1 via RFC 6761 on all modern OSes. If yours doesn't resolve:</p>
+					<pre><code># Verify resolution
+ping myapp.localhost
+# Should resolve to 127.0.0.1</code></pre>
 
 					<div class="alert alert-warning">
-						<strong>Corporate Networks:</strong> Some corporate firewalls may block local tunnel traffic. Use the <code>--proxy=builtin --no-privilege-check</code> flags for maximum compatibility.
+						<strong>Note:</strong> Some older Linux distributions may not have .localhost resolution. Add an entry to <code>/etc/hosts</code> manually if needed: <code>127.0.0.1 myapp.localhost</code>
 					</div>
 
 					<h2 id="debug-mode">Debug Mode</h2>

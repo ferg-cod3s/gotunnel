@@ -23,7 +23,7 @@ linters-settings:
     lines: 100
     statements: 50
   gci:
-    local-prefixes: github.com/johncferguson/gotunnel
+    local-prefixes: github.com/v1truv1us/gotunnel
   goconst:
     min-len: 2
     min-occurrences: 2
@@ -46,7 +46,7 @@ linters-settings:
     scope: declarations
     capital: false
   goimports:
-    local-prefixes: github.com/johncferguson/gotunnel
+    local-prefixes: github.com/v1truv1us/gotunnel
   gomnd:
     settings:
       mnd:

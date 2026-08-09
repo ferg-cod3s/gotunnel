@@ -428,7 +428,7 @@ tunnels:
 gotunnel can be used as a Go library for embedding tunnel functionality.
 
 ```go
-import "github.com/johncferguson/gotunnel/pkg/tunnel"
+import "github.com/v1truv1us/gotunnel/pkg/tunnel"
 
 // Create tunnel manager
 manager, err := tunnel.NewManager(tunnel.Config{
@@ -710,7 +710,7 @@ version: '3.8'
 
 services:
   gotunnel:
-    image: ghcr.io/johncferguson/gotunnel:latest
+    image: ghcr.io/v1truv1us/gotunnel:latest
     command: start --port 3000 --domain app
     environment:
       - GOTUNNEL_PROXY=builtin
@@ -768,4 +768,4 @@ gotunnel stop-all --force
 
 ---
 
-*This API documentation is version 0.1.0-beta and subject to change. For the latest updates, see the [GitHub repository](https://github.com/johncferguson/gotunnel).*
+*This API documentation is version 0.1.0-beta and subject to change. For the latest updates, see the [GitHub repository](https://github.com/v1truv1us/gotunnel).*

@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/johncferguson/gotunnel/internal/privilege"
+	"github.com/v1truv1us/gotunnel/internal/cert"
 )
 
 // ProxyMode defines how the proxy should operate
@@ -39,12 +40,13 @@ const (
 
 // ProxyConfig holds configuration for the proxy system
 type ProxyConfig struct {
-	Mode        ProxyMode `yaml:"mode" json:"mode"`
-	Type        ProxyType `yaml:"type" json:"type"`
-	HTTPPort    int       `yaml:"http_port" json:"http_port"`
-	HTTPSPort   int       `yaml:"https_port" json:"https_port"`
-	AutoInstall bool      `yaml:"auto_install" json:"auto_install"`
-	ConfigPath  string    `yaml:"config_path" json:"config_path"`
+	Mode        ProxyMode          `yaml:"mode" json:"mode"`
+	Type        ProxyType          `yaml:"type" json:"type"`
+	HTTPPort    int                `yaml:"http_port" json:"http_port"`
+	HTTPSPort   int                `yaml:"https_port" json:"https_port"`
+	AutoInstall bool               `yaml:"auto_install" json:"auto_install"`
+	ConfigPath  string             `yaml:"config_path" json:"config_path"`
+	CertManager *cert.CertManager  `yaml:"-" json:"-"`
 }
 
 // Route represents a proxy route mapping
@@ -57,14 +59,16 @@ type Route struct {
 
 // Manager handles proxy operations and routing
 type Manager struct {
-	config     ProxyConfig
-	routes     map[string]*Route // domain -> route mapping
-	server     *http.Server
-	listener   net.Listener
-	actualPort int              // The actual port being used (important for port 0)
-	mu         sync.RWMutex
-	ctx        context.Context
-	cancel     context.CancelFunc
+	config      ProxyConfig
+	routes      map[string]*Route
+	server      *http.Server
+	httpsServer *http.Server
+	listener    net.Listener
+	httpsListener net.Listener
+	actualPort  int
+	mu          sync.RWMutex
+	ctx         context.Context
+	cancel      context.CancelFunc
 }
 
 // NewManager creates a new proxy manager
@@ -73,10 +77,10 @@ func NewManager(config ProxyConfig) *Manager {
 	
 	// Set defaults
 	if config.HTTPPort == 0 {
-		config.HTTPPort = 80
+		config.HTTPPort = 8080
 	}
 	if config.HTTPSPort == 0 {
-		config.HTTPSPort = 443
+		config.HTTPSPort = 8443
 	}
 	if config.Mode == "" {
 		config.Mode = AutoProxy
@@ -132,60 +136,93 @@ func (m *Manager) Start() error {
 	}
 }
 
-// startBuiltInProxy starts the built-in HTTP proxy server
+// startBuiltInProxy starts the built-in HTTP/HTTPS proxy server
 func (m *Manager) startBuiltInProxy() error {
-	// Check if we can bind to privileged ports
-	canBindPrivileged := privilege.HasRootPrivileges()
-	
 	httpPort := m.config.HTTPPort
 	if httpPort == 0 {
-		// Port 0 means use any available port (testing/dynamic allocation)
-		// Keep it as 0 for dynamic allocation
-	} else if !canBindPrivileged && httpPort < 1024 {
-		// Fall back to high port and warn user
 		httpPort = 8080
-		fmt.Printf("⚠️  Cannot bind to port %d without privileges. Using port %d instead.\n", m.config.HTTPPort, httpPort)
-		fmt.Printf("💡 Access your tunnels via: http://yourapp.local:%d\n", httpPort)
-		fmt.Printf("💡 Or run with sudo for port 80 access: sudo gotunnel ...\n\n")
+	}
+	httpsPort := m.config.HTTPSPort
+	if httpsPort == 0 {
+		httpsPort = 8443
 	}
 
-	// Create the reverse proxy handler
 	handler := &httputil.ReverseProxy{
-		Director: m.proxyDirector,
+		Director:     m.proxyDirector,
 		ErrorHandler: m.proxyErrorHandler,
 	}
 
-	// Create HTTP server
+	// HTTP listener
 	m.server = &http.Server{
 		Addr:              fmt.Sprintf(":%d", httpPort),
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
-		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
 
-	// Create listener
 	listener, err := net.Listen("tcp", m.server.Addr)
 	if err != nil {
 		return fmt.Errorf("failed to create proxy listener on port %d: %w", httpPort, err)
 	}
 	m.listener = listener
-	
-	// Store the actual port (important for port 0)
+
 	if tcpListener, ok := listener.(*net.TCPListener); ok {
 		m.actualPort = tcpListener.Addr().(*net.TCPAddr).Port
 	} else {
 		m.actualPort = httpPort
 	}
 
-	// Start server in background
 	go func() {
 		if err := m.server.Serve(m.listener); err != nil && err != http.ErrServerClosed {
-			fmt.Printf("⚠️  Proxy server error: %v\n", err)
+			fmt.Printf("⚠️  Proxy HTTP error: %v\n", err)
 		}
 	}()
 
-	fmt.Printf("✅ Built-in proxy started on port %d\n", httpPort)
+	fmt.Printf("✅ Proxy started on port %d (HTTP)\n", httpPort)
+
+	// HTTPS listener with SNI-based cert selection
+	if m.config.CertManager != nil {
+		tlsConfig := &tls.Config{
+			GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+				sni := hello.ServerName
+				if sni != "" {
+					if cert, err := m.config.CertManager.EnsureCert(sni); err == nil {
+						return cert, nil
+					}
+				}
+				// Fall back to first route's cert (e.g. when accessing by IP)
+				m.mu.RLock()
+				for _, route := range m.routes {
+					if route.Domain != "" {
+						d := route.Domain
+						m.mu.RUnlock()
+						return m.config.CertManager.EnsureCert(d)
+					}
+				}
+				m.mu.RUnlock()
+				return nil, fmt.Errorf("no certificate available")
+			},
+			MinVersion: tls.VersionTLS12,
+		}
+
+		httpsLn, err := tls.Listen("tcp", fmt.Sprintf(":%d", httpsPort), tlsConfig)
+		if err != nil {
+			fmt.Printf("⚠️  Failed to start HTTPS on port %d: %v\n", httpsPort, err)
+		} else {
+			m.httpsListener = httpsLn
+			m.httpsServer = &http.Server{
+				Handler:     handler,
+				IdleTimeout: 60 * time.Second,
+			}
+			go func() {
+				if err := m.httpsServer.Serve(m.httpsListener); err != nil && err != http.ErrServerClosed {
+					fmt.Printf("⚠️  Proxy HTTPS error: %v\n", err)
+				}
+			}()
+			fmt.Printf("✅ Proxy started on port %d (HTTPS)\n", httpsPort)
+		}
+	}
+
 	return nil
 }
 
@@ -196,18 +233,24 @@ func (m *Manager) proxyDirector(req *http.Request) {
 
 	host := strings.Split(req.Host, ":")[0] // Remove port from host header
 	route, exists := m.routes[host]
-	
+
 	if !exists {
-		// Default behavior - return 404 will be handled by ErrorHandler
+		// Fall back to first available route (e.g. when accessing by IP from phone)
+		for _, r := range m.routes {
+			route = r
+			exists = true
+			break
+		}
+	}
+
+	if !exists {
+		// No routes at all — return 404 via ErrorHandler
 		req.URL = nil
 		return
 	}
 
-	// Set up the proxy target
+	// Set up the proxy target — always HTTP to tunnel (proxy terminates TLS)
 	scheme := "http"
-	if route.HTTPS {
-		scheme = "https"
-	}
 
 	target := &url.URL{
 		Scheme: scheme,
@@ -310,17 +353,20 @@ func (m *Manager) ListRoutes() map[string]*Route {
 func (m *Manager) Stop() error {
 	m.cancel()
 
-	if m.server != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		
-		if err := m.server.Shutdown(ctx); err != nil {
-			return fmt.Errorf("failed to shutdown proxy server: %w", err)
-		}
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
+	if m.server != nil {
+		m.server.Shutdown(ctx)
+	}
+	if m.httpsServer != nil {
+		m.httpsServer.Shutdown(ctx)
+	}
 	if m.listener != nil {
 		m.listener.Close()
+	}
+	if m.httpsListener != nil {
+		m.httpsListener.Close()
 	}
 
 	fmt.Println("✅ Proxy stopped")

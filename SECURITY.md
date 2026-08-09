@@ -19,7 +19,7 @@ We take the security of gotunnel seriously. If you believe you have found a secu
 - Exploit the vulnerability on production systems
 
 ### Please DO:
-- Report vulnerabilities via [GitHub Security Advisories](https://github.com/johncferguson/gotunnel/security/advisories/new)
+- Report vulnerabilities via [GitHub Security Advisories](https://github.com/v1truv1us/gotunnel/security/advisories/new)
 - Provide detailed information about the vulnerability
 - Allow us time to fix the issue before public disclosure
 

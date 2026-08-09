@@ -406,11 +406,11 @@ jobs:
         pkgrel=1
         pkgdesc="Create secure local tunnels for development without root privileges"
         arch=('x86_64' 'aarch64')
-        url="https://github.com/johncferguson/gotunnel"
+        url="https://github.com/v1truv1us/gotunnel"
         license=('MIT')
         depends=('glibc')
         makedepends=('go')
-        source=("\$pkgname-\$pkgver.tar.gz::https://github.com/johncferguson/gotunnel/archive/v\$pkgver.tar.gz")
+        source=("\$pkgname-\$pkgver.tar.gz::https://github.com/v1truv1us/gotunnel/archive/v\$pkgver.tar.gz")
         sha256sums=('SKIP')
 
         build() {
@@ -502,7 +502,7 @@ jobs:
         
         # Update release date
         DATE=$(date +%Y-%m-%d)
-        sed -i "s/ReleaseDate: .*/ReleaseDate: $DATE/" packaging/winget/manifests/j/johncferguson/gotunnel/$VERSION/johncferguson.gotunnel.installer.yaml
+        sed -i "s/ReleaseDate: .*/ReleaseDate: $DATE/" packaging/winget/manifests/j/v1truv1us/gotunnel/$VERSION/v1truv1us.gotunnel.installer.yaml
         
     - name: Upload Winget manifests
       uses: actions/upload-artifact@v4

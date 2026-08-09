@@ -4,9 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -17,10 +15,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/johncferguson/gotunnel/internal/cert"
-	"github.com/johncferguson/gotunnel/internal/dnsserver"
-	"github.com/johncferguson/gotunnel/internal/logging"
-	"github.com/johncferguson/gotunnel/internal/proxy"
+	"github.com/v1truv1us/gotunnel/internal/cert"
+	"github.com/v1truv1us/gotunnel/internal/dnsserver"
+	"github.com/v1truv1us/gotunnel/internal/logging"
+	"github.com/v1truv1us/gotunnel/internal/proxy"
 )
 
 const (
@@ -152,7 +150,7 @@ func (m *Manager) StartTunnelWithPorts(ctx context.Context, backendPort int, dom
 
 // StartTunnel starts a tunnel with default ports (production use)
 func (m *Manager) StartTunnel(ctx context.Context, backendPort int, domain string, https bool, httpsPort int) error {
-	return m.StartTunnelWithPorts(ctx, backendPort, domain, https, 80, httpsPort)
+	return m.StartTunnelWithPorts(ctx, backendPort, domain, https, 8080, httpsPort)
 }
 
 func (m *Manager) startTunnelInternal(ctx context.Context, backendPort int, domain string, https bool, httpPort, httpsPort int) error {
@@ -165,6 +163,9 @@ func (m *Manager) startTunnelInternal(ctx context.Context, backendPort int, doma
 	}
 	if domain == "" {
 		return fmt.Errorf("domain cannot be empty")
+	}
+	if err := ValidateDomain(domain); err != nil {
+		return fmt.Errorf("invalid domain: %w", err)
 	}
 	if httpPort <= 0 || httpPort > 65535 {
 		return fmt.Errorf("invalid HTTP port: %d", httpPort)
@@ -192,7 +193,7 @@ func (m *Manager) startTunnelInternal(ctx context.Context, backendPort int, doma
 			tunnelHTTPPort, tunnelHTTPSPort, httpPort, httpsPort)
 	}
 
-	// Convert domain to .local if not already
+	// Ensure domain has .local suffix (RFC 6761: auto-resolves to 127.0.0.1, no /etc/hosts needed)
 	if !strings.HasSuffix(domain, ".local") {
 		domain = domain + ".local"
 	}
@@ -240,12 +241,7 @@ func (m *Manager) startTunnelInternal(ctx context.Context, backendPort int, doma
 		}
 	}
 
-	// Create hosts file backup before first modification (only if not using proxy)
-	if !m.useProxy && len(m.tunnels) == 1 {
-		if err := m.backupHostsFile(); err != nil {
-			return fmt.Errorf("failed to backup hosts file: %w", err)
-		}
-	}
+	// .local domains resolve to 127.0.0.1 via RFC 6761 — no /etc/hosts backup/modification needed
 
 	return nil
 }
@@ -265,10 +261,7 @@ func (m *Manager) Stop(ctx context.Context) error {
 	// Clear the tunnels map
 	m.tunnels = make(map[string]*Tunnel)
 
-	// Restore hosts file from backup
-	if err := m.restoreHostsFile(); err != nil {
-		errs = append(errs, fmt.Errorf("failed to restore hosts file: %w", err))
-	}
+	// .local domains don't modify /etc/hosts — no restore needed
 
 	// If there were any errors, return them combined
 	if len(errs) > 0 {
@@ -293,11 +286,7 @@ func (m *Manager) StopTunnel(ctx context.Context, domain string) error {
 	}
 
 	// Remove from hosts file (only if not using proxy mode)
-	if !m.useProxy {
-		if err := removeFromHostsFile(domain); err != nil {
-			log.Printf("Warning: Failed to remove from hosts file: %v", err)
-		}
-	}
+	// .local domains resolve via RFC 6761 — no /etc/hosts cleanup needed
 
 	// Remove from proxy if using proxy mode
 	if m.useProxy && m.proxyManager != nil {
@@ -310,7 +299,7 @@ func (m *Manager) StopTunnel(ctx context.Context, domain string) error {
 
 	// Unregister from mDNS
 	if err := dnsserver.UnregisterDomain(domain); err != nil {
-		return fmt.Errorf("failed to unregister domain from mDNS: %w", err)
+		log.Printf("Warning: Failed to unregister domain from mDNS: %v", err)
 	}
 
 	// Remove from tunnels map
@@ -361,45 +350,13 @@ func (m *Manager) ListTunnels() []map[string]interface{} {
 	return tunnelList
 }
 
-func handleConnection(ctx context.Context, clientConn net.Conn, tunnel *Tunnel) {
-	defer clientConn.Close()
-
-	// Connect to the local application (with a timeout)
-	dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	localConn, err := (&net.Dialer{Timeout: 5 * time.Second}).DialContext(dialCtx, "tcp", fmt.Sprintf("localhost:%d", tunnel.Port))
-	if err != nil {
-		log.Println("Error connecting to local application:", err)
-		return
-	}
-	defer localConn.Close()
-
-	// Forward traffic (using the context for cancellation)
-	go func() {
-		// Use io.Copy with a context-aware mechanism:
-		if _, err := io.Copy(localConn, clientConn); err != nil && !errors.Is(err, context.Canceled) {
-			log.Printf("Error copying from client to local app: %v", err)
-		}
-	}()
-
-	if _, err := io.Copy(clientConn, localConn); err != nil && !errors.Is(err, context.Canceled) {
-		log.Printf("Error copying from local app to client: %v", err)
-	}
-}
 
 func (m *Manager) startTunnel(t *Tunnel) error {
 	// Get the machine's network IP for the proxy
 	ip := dnsserver.GetOutboundIP()
 	t.TargetIP = ip.String()
 
-	// Update /etc/hosts file (skip if using proxy mode)
-	if !m.useProxy {
-		if err := updateHostsFile(t.Domain); err != nil {
-			return fmt.Errorf("failed to update hosts file: %w", err)
-		}
-	} else {
-		log.Printf("Skipping hosts file update (using proxy mode)")
-	}
+	// .local resolves to 127.0.0.1 via RFC 6761 — no /etc/hosts modification needed
 
 	// Register domain with DNS server (use tunnel listen port, not backend port)
 	listenPort := t.HTTPPort
@@ -413,7 +370,7 @@ func (m *Manager) startTunnel(t *Tunnel) error {
 	// Create reverse proxy
 	proxy := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
-			targetURL := fmt.Sprintf("http://127.0.0.1:%d", t.Port)
+			targetURL := fmt.Sprintf("http://localhost:%d", t.Port)
 			target, _ := url.Parse(targetURL)
 			req.URL.Scheme = target.Scheme
 			req.URL.Host = target.Host
@@ -438,15 +395,21 @@ func (m *Manager) startTunnel(t *Tunnel) error {
 	// Initialize done channel
 	t.done = make(chan struct{})
 
-	// Explicitly bind to all interfaces with the tunnel listen port
-	if t.HTTPS {
-		// Listen on HTTPS port for the tunnel (default 443)
+	// Bind listener: proxy mode uses HTTP (proxy handles TLS); direct mode handles TLS itself
+	if m.useProxy {
+		// Proxy handles TLS — tunnel uses HTTP internally
+		baseListener, err = config.Listen(context.Background(), "tcp", fmt.Sprintf("0.0.0.0:%d", t.HTTPPort))
+		if err != nil {
+			return fmt.Errorf("failed to create tunnel listener: %w", err)
+		}
+		t.listener = baseListener
+	} else if t.HTTPS {
+		// Direct mode — tunnel handles its own TLS
 		baseListener, err = config.Listen(context.Background(), "tcp", fmt.Sprintf("0.0.0.0:%d", t.HTTPSPort))
 		if err != nil {
 			return fmt.Errorf("failed to create HTTPS listener: %w", err)
 		}
 
-		// Create TLS config
 		tlsConfig := &tls.Config{
 			Certificates: []tls.Certificate{*t.Cert},
 			MinVersion:   tls.VersionTLS12,
@@ -458,13 +421,11 @@ func (m *Manager) startTunnel(t *Tunnel) error {
 				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			},
-			PreferServerCipherSuites: true,
-			NextProtos:               []string{"h2", "http/1.1"},
+			NextProtos: []string{"h2", "http/1.1"},
 		}
 
 		t.listener = tls.NewListener(baseListener, tlsConfig)
 	} else {
-		// Listen on HTTP port for the tunnel (default 80), not backend port
 		baseListener, err = config.Listen(context.Background(), "tcp", fmt.Sprintf("0.0.0.0:%d", t.HTTPPort))
 		if err != nil {
 			return fmt.Errorf("failed to create HTTP listener: %w", err)
@@ -497,17 +458,17 @@ func (m *Manager) startTunnel(t *Tunnel) error {
 
 func (m *Manager) StopAll(ctx context.Context) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
+	domains := make([]string, 0, len(m.tunnels))
+	for d := range m.tunnels {
+		domains = append(domains, d)
+	}
+	m.mu.Unlock()
 
-	// Stop each tunnel
-	for domain, _ := range m.tunnels {
-		if err := m.StopTunnel(ctx, domain); err != nil {
-			return fmt.Errorf("error stopping tunnel %s: %w", domain, err)
+	for _, d := range domains {
+		if err := m.StopTunnel(ctx, d); err != nil {
+			return fmt.Errorf("error stopping tunnel %s: %w", d, err)
 		}
 	}
-
-	// Clear the tunnels map
-	m.tunnels = make(map[string]*Tunnel)
 
 	return nil
 }
@@ -529,6 +490,21 @@ func (m *Manager) SetHostsBackupDir(dir string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.hostsBackup = dir
+}
+
+// CleanupStaleDomain removes orphaned /etc/hosts and mDNS entries for a domain
+// whose owning process is no longer running. Safe to call even if nothing is
+// registered. Does not modify the in-memory tunnels map.
+func (m *Manager) CleanupStaleDomain(domain string) {
+	if !strings.HasSuffix(domain, ".local") {
+		domain = domain + ".local"
+	}
+	if err := removeFromHostsFile(domain); err != nil {
+		log.Printf("Warning: Failed to clean stale hosts entry for %s: %v", domain, err)
+	}
+	if err := dnsserver.UnregisterDomain(domain); err != nil {
+		log.Printf("Warning: Failed to clean stale mDNS entry for %s: %v", domain, err)
+	}
 }
 
 // updateHostsFile adds or updates an entry in /etc/hosts
@@ -585,27 +561,3 @@ func removeFromHostsFile(domain string) error {
 	return nil
 }
 
-// resolveHostname resolves a hostname, using the system DNS for .local domains
-func resolveHostname(hostname string) (string, error) {
-	if strings.HasSuffix(hostname, ".local") {
-		// Resolve using system DNS for .local domains
-		ips, err := net.LookupHost(hostname)
-		if err != nil {
-			return "", fmt.Errorf("failed to resolve hostname: %w", err)
-		}
-		if len(ips) > 0 {
-			return ips[0], nil // Return the first IP address
-		}
-		return "", fmt.Errorf("hostname not found in system DNS")
-	} else {
-		// Resolve using system DNS for other domains
-		ips, err := net.LookupHost(hostname)
-		if err != nil {
-			return "", fmt.Errorf("failed to resolve hostname: %w", err)
-		}
-		if len(ips) > 0 {
-			return ips[0], nil // Return the first IP address
-		}
-		return "", fmt.Errorf("hostname not found in system DNS")
-	}
-}

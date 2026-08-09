@@ -18,7 +18,7 @@ case "$1" in
         cat > /etc/systemd/system/gotunnel.service << 'EOF'
 [Unit]
 Description=gotunnel - Secure local tunnels for development
-Documentation=https://github.com/johncferguson/gotunnel
+Documentation=https://github.com/v1truv1us/gotunnel
 After=network.target
 
 [Service]

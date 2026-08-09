@@ -94,7 +94,7 @@ git clone https://github.com/YOUR_USERNAME/gotunnel.git
 cd gotunnel
 
 # Add upstream remote
-git remote add upstream https://github.com/johncferguson/gotunnel.git
+git remote add upstream https://github.com/v1truv1us/gotunnel.git
 
 # Install dependencies
 go mod download

@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: gotunnel
 Upstream-Contact: John Ferguson <john@fergify.work>
-Source: https://github.com/johncferguson/gotunnel
+Source: https://github.com/v1truv1us/gotunnel
 
 Files: *
 Copyright: 2024 John Ferguson

@@ -3,18 +3,18 @@
   <metadata>
     <id>gotunnel</id>
     <version>0.1.0-beta</version>
-    <packageSourceUrl>https://github.com/johncferguson/gotunnel</packageSourceUrl>
-    <owners>johncferguson</owners>
+    <packageSourceUrl>https://github.com/v1truv1us/gotunnel</packageSourceUrl>
+    <owners>v1truv1us</owners>
     <title>gotunnel - Secure Local Tunnels</title>
     <authors>John Ferguson</authors>
-    <projectUrl>https://github.com/johncferguson/gotunnel</projectUrl>
-    <iconUrl>https://raw.githubusercontent.com/johncferguson/gotunnel/main/docs/icon.png</iconUrl>
+    <projectUrl>https://github.com/v1truv1us/gotunnel</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/v1truv1us/gotunnel/main/docs/icon.png</iconUrl>
     <copyright>Copyright 2024 John Ferguson</copyright>
-    <licenseUrl>https://github.com/johncferguson/gotunnel/blob/main/LICENSE</licenseUrl>
+    <licenseUrl>https://github.com/v1truv1us/gotunnel/blob/main/LICENSE</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <projectSourceUrl>https://github.com/johncferguson/gotunnel</projectSourceUrl>
-    <docsUrl>https://github.com/johncferguson/gotunnel/blob/main/README.md</docsUrl>
-    <bugTrackerUrl>https://github.com/johncferguson/gotunnel/issues</bugTrackerUrl>
+    <projectSourceUrl>https://github.com/v1truv1us/gotunnel</projectSourceUrl>
+    <docsUrl>https://github.com/v1truv1us/gotunnel/blob/main/README.md</docsUrl>
+    <bugTrackerUrl>https://github.com/v1truv1us/gotunnel/issues</bugTrackerUrl>
     <tags>tunnel development proxy https http local network enterprise</tags>
     <summary>Create secure local tunnels for development without root privileges</summary>
     <description><![CDATA[

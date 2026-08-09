@@ -15,7 +15,7 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/johncferguson/gotunnel/internal/observability.ServiceVersion={{.Version}}
+      - -X github.com/v1truv1us/gotunnel/internal/observability.ServiceVersion={{.Version}}
     mod_timestamp: '{{ .CommitTimestamp }}'
 
 archives:
