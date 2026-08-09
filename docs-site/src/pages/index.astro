@@ -298,10 +298,10 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site).href;
 			<section class="hero">
 				<div class="container">
 					<h1>gotunnel</h1>
-					<p>Give your local dev server a real HTTPS domain — in one command, no sudo required.</p>
+					<p>Self-hosted local tunneling. Expose your dev server to the internet in one command.</p>
 					<div style="background: rgba(0,0,0,0.2); border-radius: 0.5rem; padding: 1rem; font-family: 'SF Mono', Consolas, monospace; font-size: 1rem; max-width: 600px; margin: 0 auto 2rem; text-align: left;">
-						<span style="opacity: 0.6;">$</span> gotunnel start -p 3000 -d myapp<br>
-						<span style="color: #4ade80;">✓</span> Tunnel ready at <strong>https://myapp.localhost:8443</strong>
+						<span style="opacity: 0.6;">$</span> gotunnel expose -p 3000 -d myapp<br>
+						<span style="color: #4ade80;">&check;</span> Live at <strong>https://myapp.tunnel.yourdomain.com</strong>
 					</div>
 					<div class="cta-buttons">
 						<a href="/install" class="btn btn-primary">Get Started</a>
@@ -312,34 +312,43 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site).href;
 
 			<section class="features">
 				<div class="container">
-					<h2>How it works</h2>
-					<p style="text-align: center; font-size: 1.15rem; color: var(--text-light); max-width: 800px; margin: 0 auto 3rem;">
-						gotunnel uses <code>.localhost</code> domains (RFC 6761) that every OS resolves to <code>127.0.0.1</code> automatically — no <code>/etc/hosts</code> editing, no DNS setup. It runs a reverse proxy on non-privileged ports (8080/8443) with automatic HTTPS certificates via mkcert.
-					</p>
+					<h2>Two modes, one tool</h2>
+					<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; max-width: 800px; margin: 0 auto 3rem;">
+						<div style="background: var(--bg); padding: 1.5rem; border-radius: 0.5rem; border-left: 4px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+							<h3 style="color: var(--primary); margin-bottom: 0.5rem;">Cloud Relay</h3>
+							<p style="color: var(--text-light); font-size: 0.95rem;">Self-host a relay server, get public URLs accessible from any device.</p>
+							<code style="display: block; background: var(--text); color: white; padding: 0.5rem; border-radius: 0.25rem; font-size: 0.85rem; margin-top: 0.5rem;">gotunnel expose -p 3000 -d myapp</code>
+						</div>
+						<div style="background: var(--bg); padding: 1.5rem; border-radius: 0.5rem; border-left: 4px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+							<h3 style="color: var(--primary); margin-bottom: 0.5rem;">Local Tunneling</h3>
+							<p style="color: var(--text-light); font-size: 0.95rem;">HTTPS .local domains on your machine. No server needed.</p>
+							<code style="display: block; background: var(--text); color: white; padding: 0.5rem; border-radius: 0.25rem; font-size: 0.85rem; margin-top: 0.5rem;">gotunnel start -p 3000 -d myapp</code>
+						</div>
+					</div>
 					<div class="features-grid">
 						<div class="feature">
-							<h3>No sudo, no /etc/hosts</h3>
-							<p>Uses .localhost domains on high ports. No root access, no system file modifications. Works in corporate environments and shared systems.</p>
+							<h3>Self-hosted relay</h3>
+							<p>Deploy the relay server on your own infrastructure (Coolify, Docker, any VPS). No third-party dependencies, no data leaves your network.</p>
 						</div>
 						<div class="feature">
 							<h3>Automatic HTTPS</h3>
-							<p>Self-signed certificates via mkcert, trusted locally. Test webhooks, secure cookies, and HTTPS-only APIs without configuration.</p>
+							<p>SNI-based TLS proxy generates certificates per domain via mkcert. Multiple HTTPS tunnels share a single port.</p>
 						</div>
 						<div class="feature">
-							<h3>Multiple tunnels</h3>
-							<p>Run several local services side by side: <code>frontend.localhost:8443</code>, <code>api.localhost:8443</code>, <code>admin.localhost:8443</code> — each proxied to its own port.</p>
+							<h3>macOS menu bar</h3>
+							<p>Daemon mode with a menu bar icon. See active tunnels, copy URLs, and stop tunnels without leaving your editor.</p>
 						</div>
 						<div class="feature">
-							<h3>Built-in reverse proxy</h3>
-							<p>No nginx or Caddy needed. The built-in proxy handles routing, with optional support for external proxies when you need them.</p>
+							<h3>No sudo per-run</h3>
+							<p>One-time <code>install-helper</code> sets up port forwarding and DNS. After that, every tunnel is sudo-free.</p>
+						</div>
+						<div class="feature">
+							<h3>Open source</h3>
+							<p>MIT licensed. Self-host the relay, audit the code, contribute features. No vendor lock-in.</p>
 						</div>
 						<div class="feature">
 							<h3>Cross-platform</h3>
-							<p>Native binaries for macOS, Linux, and Windows. Install via Homebrew, Scoop, apt, or a single curl command.</p>
-						</div>
-						<div class="feature">
-							<h3>Observability built in</h3>
-							<p>OpenTelemetry traces, structured logging, and optional Sentry integration. Monitor tunnel health with Prometheus and Grafana.</p>
+							<p>Native binaries for macOS, Linux, and Windows. Works with Homebrew, Scoop, apt, or a single curl command.</p>
 						</div>
 					</div>
 				</div>

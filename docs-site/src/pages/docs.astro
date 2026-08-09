@@ -249,136 +249,183 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site).href;
 						<li><a href="#quick-start">Quick Start</a></li>
 					</ul>
 
-					<h3>Configuration</h3>
+					<h3>Cloud Relay</h3>
 					<ul>
-						<li><a href="#cli-options">CLI Options</a></li>
-						<li><a href="#config-file">Config File</a></li>
-						<li><a href="#environment-vars">Environment Variables</a></li>
+						<li><a href="#expose">Expose Command</a></li>
+						<li><a href="#self-hosting">Self-Hosting Relay</a></li>
 					</ul>
 
-					<h3>Deployment</h3>
+					<h3>Local Tunneling</h3>
 					<ul>
-						<li><a href="#docker">Docker</a></li>
-						<li><a href="#kubernetes">Kubernetes</a></li>
-						<li><a href="#system-service">System Service</a></li>
+						<li><a href="#start">Local Tunnels</a></li>
+						<li><a href="#daemon">Daemon Mode</a></li>
+						<li><a href="#helper">Privileged Helper</a></li>
 					</ul>
 
-					<h3>Observability</h3>
+					<h3>Reference</h3>
 					<ul>
-						<li><a href="#metrics">Metrics</a></li>
-						<li><a href="#tracing">Tracing</a></li>
-						<li><a href="#monitoring">Monitoring</a></li>
+						<li><a href="#cli">CLI Reference</a></li>
+						<li><a href="#env-vars">Environment Variables</a></li>
 					</ul>
 
 					<h3>Troubleshooting</h3>
 					<ul>
-						<li><a href="#common-issues">Common Issues</a></li>
-						<li><a href="#debug-mode">Debug Mode</a></li>
+						<li><a href="#issues">Common Issues</a></li>
 					</ul>
 				</aside>
 
 				<div class="content">
 					<h1 id="overview">gotunnel Documentation</h1>
-					
-					<p>gotunnel provides secure HTTP/HTTPS tunnels for local development with built-in proxy capabilities, OpenTelemetry observability, and enterprise-friendly configuration options.</p>
+
+					<p>gotunnel is an open-source, self-hostable tunneling tool. Expose local dev servers to the internet via a relay server, or create local HTTPS domains — all from one CLI.</p>
 
 					<div class="alert alert-info">
-						<strong>Beta Software:</strong> gotunnel is currently in beta. While functional and extensively tested, the API and configuration may change before v1.0.
+						<strong>Two modes:</strong> Use <code>gotunnel expose</code> for public URLs (like ngrok, self-hosted). Use <code>gotunnel start</code> for local .local domains (HTTPS on your machine).
 					</div>
 
 					<h2 id="installation">Installation</h2>
-
-					<h3>Package Managers</h3>
 
 					<p><strong>Homebrew (macOS/Linux):</strong></p>
 					<pre><code>brew tap v1truv1us/gotunnel
 brew install gotunnel</code></pre>
 
-					<p><strong>Scoop (Windows):</strong></p>
-					<pre><code>scoop bucket add v1truv1us https://github.com/v1truv1us/scoop-bucket
-scoop install gotunnel</code></pre>
-
-					<p><strong>APT (Debian/Ubuntu):</strong></p>
-					<pre><code>curl -fsSL https://github.com/v1truv1us/gotunnel/releases/latest/download/gotunnel_0.1.0-beta_amd64.deb -o gotunnel.deb
-sudo dpkg -i gotunnel.deb</code></pre>
-
-					<h3>Direct Installation</h3>
-
-					<p><strong>Install Script (Unix):</strong></p>
-					<pre><code>curl -sSL https://raw.githubusercontent.com/v1truv1us/gotunnel/main/scripts/install.sh | bash</code></pre>
-
 					<p><strong>Go Install:</strong></p>
 					<pre><code>go install github.com/v1truv1us/gotunnel/cmd/gotunnel@latest</code></pre>
 
+					<p><strong>Install Script:</strong></p>
+					<pre><code>curl -sSL https://raw.githubusercontent.com/v1truv1us/gotunnel/main/scripts/install.sh | bash</code></pre>
+
 					<h2 id="quick-start">Quick Start</h2>
 
-					<h3>Basic Usage</h3>
+					<h3>Option A: Cloud Relay (public URL)</h3>
+					<p>Requires a relay server (see <a href="#self-hosting">Self-Hosting</a> below). Works from any device.</p>
+					<pre><code>gotunnel expose -p 3000 -d myapp --relay tunnel.yourdomain.com
 
-					<p>Start a tunnel (no sudo needed):</p>
-					<pre><code># Tunnel your app running on port 3000
+# Output:
+#   Local:   http://localhost:3000
+#   Public:  https://myapp.tunnel.yourdomain.com</code></pre>
+
+					<h3>Option B: Local Tunnel (HTTPS on your machine)</h3>
+					<p>No server needed. One-time setup for port-free URLs:</p>
+					<pre><code># One-time: install privileged helper (port 80/443 forwarding + DNS)
+sudo gotunnel install-helper
+
+# Start a tunnel
 gotunnel start -p 3000 -d myapp
 
-# Access at https://myapp.localhost:8443</code></pre>
+# Output:
+#   Access:  https://myapp.local</code></pre>
 
-					<p>Access your app:</p>
+					<h2 id="expose">Expose Command (Cloud Relay)</h2>
+
+					<p>Connects to a relay server via WebSocket. The relay forwards public traffic to your local machine.</p>
+					<pre><code>gotunnel expose -p 3000 -d myapp --relay tunnel.yourdomain.com</code></pre>
+
+					<p><strong>Flags:</strong></p>
 					<ul>
-						<li>Local: <code>http://localhost:3000</code></li>
-						<li>Tunnel: <code>https://myapp.localhost:8443</code></li>
+						<li><code>-p, --port</code> — local port to expose (default: 8080)</li>
+						<li><code>-d, --domain</code> — subdomain for the public URL</li>
+						<li><code>-r, --relay</code> — relay server URL</li>
 					</ul>
 
-					<h3>With HTTP only (no TLS)</h3>
-					<pre><code>gotunnel start -p 3000 -d myapp --https=false
-# Access at: http://myapp.localhost:8080</code></pre>
+					<p>Auto-reconnects on disconnect. Press Ctrl+C to stop.</p>
 
-					<h3>Multiple Tunnels</h3>
-					<pre><code># Terminal 1: Frontend
-gotunnel start -p 3000 -d frontend
+					<h2 id="self-hosting">Self-Hosting the Relay</h2>
 
-# Terminal 2: API  
-gotunnel start -p 8080 -d api
+					<p>Deploy the relay server on your own infrastructure. Works with Docker, Coolify, or any VPS.</p>
 
-# Terminal 3: Database Admin
-gotunnel start -p 5432 -d pgadmin</code></pre>
+					<h3>Docker</h3>
+					<pre><code>docker build -f Dockerfile.relay -t gotunnel-relay .
+docker run -p 8080:8080 -e RELAY_DOMAIN=tunnel.example.com gotunnel-relay</code></pre>
 
-					<h2 id="cli-options">CLI Options</h2>
+					<h3>Coolify</h3>
+					<ol>
+						<li>Create project → Dockerfile → path: <code>/Dockerfile.relay</code></li>
+						<li>Set domain: <code>tunnel.yourdomain.com</code></li>
+						<li>Enable wildcard domain: <code>*.{`{domain}`}</code></li>
+						<li>Set env var: <code>RELAY_DOMAIN=tunnel.yourdomain.com</code></li>
+						<li>Deploy</li>
+					</ol>
 
-					<h3>Global Flags</h3>
-					<pre><code>gotunnel [global options] command [command options] [arguments...]
+					<h3>DNS Setup</h3>
+					<pre><code>A    tunnel.yourdomain.com     → server IP
+A    *.tunnel.yourdomain.com  → server IP</code></pre>
+
+					<h3>Relay API</h3>
+					<ul>
+						<li><code>GET /health</code> — health check</li>
+						<li><code>GET /api/tunnels</code> — list connected tunnels</li>
+						<li><code>WS /ws?domain=...</code> — WebSocket tunnel endpoint</li>
+					</ul>
+
+					<h2 id="start">Local Tunnels</h2>
+
+					<p>Create local HTTPS domains for development. Uses <code>.local</code> with SNI-based TLS proxy and mkcert certificates.</p>
+					<pre><code># Start daemon (auto-starts on first tunnel)
+gotunnel daemon
+
+# Create tunnels
+gotunnel start -p 3000 -d frontend    # → https://frontend.local
+gotunnel start -p 8080 -d api         # → https://api.local
+
+# Manage
+gotunnel list                         # Show active tunnels
+gotunnel stop frontend                # Stop specific tunnel
+gotunnel stop-all                     # Stop everything</code></pre>
+
+					<h2 id="daemon">Daemon Mode</h2>
+
+					<p>The daemon runs persistently with a macOS menu bar icon. Tunnels survive terminal closure.</p>
+					<pre><code># Start daemon manually (or it auto-starts on first 'gotunnel start')
+gotunnel daemon
+
+# Menu bar shows:
+#   🚇 Active tunnels (2)
+#   ● https://frontend.local     [click to copy]
+#   ● https://api.local          [click to copy]
+#   ⏹ Stop frontend
+#   ⏹ Stop api
+#   ⏹ Stop All
+#   Quit gotunnel</code></pre>
+
+					<p>The daemon auto-starts when you run <code>gotunnel start</code> if it's not already running.</p>
+
+					<h2 id="helper">Privileged Helper</h2>
+
+					<p>One-time setup for port-free URLs (80→8080, 443→8443) and automatic <code>/etc/hosts</code> management.</p>
+					<pre><code># Install (one-time, macOS/Linux)
+sudo gotunnel install-helper
+
+# Uninstall
+sudo gotunnel uninstall-helper</code></pre>
+
+					<p>The helper runs as a system service (launchd on macOS, systemd on Linux) and:
+					<ul>
+						<li>Forwards port 80→8080 and 443→8443</li>
+						<li>Manages /etc/hosts entries for .local domains</li>
+						<li>Resolves *.local DNS queries for network devices</li>
+					</ul></p>
+
+					<h2 id="cli">CLI Reference</h2>
+
+					<pre><code>COMMANDS:
+   expose    Expose a local port via relay server
+   start     Start a local HTTPS tunnel
+   stop      Stop a specific tunnel
+   list      List active tunnels
+   stop-all  Stop all tunnels
+   daemon    Start daemon with menu bar icon
+   install-helper    Install privileged port forwarder (sudo)
+   uninstall-helper  Remove privileged port forwarder (sudo)
 
 GLOBAL OPTIONS:
-   --no-privilege-check         Skip privilege check
-   --sentry-dsn value           Sentry DSN for error tracking (opt-in) [$GOTUNNEL_SENTRY_DSN, $SENTRY_DSN]
-   --environment value          Environment (development, staging, production) [$ENVIRONMENT]
-   --debug                      Enable debug logging and tracing [$DEBUG]
-   --proxy value                Proxy mode: builtin, nginx, caddy, auto, config, none [$GOTUNNEL_PROXY]
-   --proxy-http-port value      HTTP port for proxy (default: 8080) [$GOTUNNEL_PROXY_HTTP_PORT]
-   --proxy-https-port value     HTTPS port for proxy (default: 8443) [$GOTUNNEL_PROXY_HTTPS_PORT]</code></pre>
+   --proxy value        Proxy mode: builtin, auto, none [$GOTUNNEL_PROXY]
+   --proxy-http-port    HTTP port (default: 8080)
+   --proxy-https-port   HTTPS port (default: 8443)
+   --debug              Enable debug logging [$DEBUG]
+   --sentry-dsn         Sentry DSN (opt-in) [$GOTUNNEL_SENTRY_DSN]</code></pre>
 
-					<h3>Commands</h3>
-					<pre><code>gotunnel start --port 3000 --domain myapp    # Start tunnel
-gotunnel stop myapp                           # Stop specific tunnel  
-gotunnel list                                 # List active tunnels
-gotunnel stop-all                            # Stop all tunnels</code></pre>
-
-					<h2 id="config-file">Configuration File</h2>
-
-					<p>Create <code>~/.config/gotunnel/config.yaml</code>:</p>
-
-					<pre><code>proxy:
-  mode: "builtin"
-  http_port: 8080
-  https_port: 8443
-
-observability:
-  sentry:
-    dsn: ""  # Set to enable Sentry (opt-in)
-  logging:
-    level: "info"
-  tracing:
-    enabled: false
-    sample_rate: 1.0</code></pre>
-
-					<h2 id="environment-vars">Environment Variables</h2>
+					<h2 id="env-vars">Environment Variables</h2>
 
 					<table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
 						<thead>
@@ -390,9 +437,19 @@ observability:
 						</thead>
 						<tbody>
 							<tr>
-								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>ENVIRONMENT</code></td>
-								<td style="padding: 0.75rem; border: 1px solid var(--border);">Runtime environment</td>
-								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>development</code></td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>RELAY_DOMAIN</code></td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);">Base domain for relay server</td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);">—</td>
+							</tr>
+							<tr style="background: var(--bg-light);">
+								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>RELAY_ADDR</code></td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);">Relay listen address</td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>:8080</code></td>
+							</tr>
+							<tr>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>GOTUNNEL_PROXY</code></td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);">Local proxy mode</td>
+								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>auto</code></td>
 							</tr>
 							<tr style="background: var(--bg-light);">
 								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>GOTUNNEL_SENTRY_DSN</code></td>
@@ -404,70 +461,28 @@ observability:
 								<td style="padding: 0.75rem; border: 1px solid var(--border);">Enable debug logging</td>
 								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>false</code></td>
 							</tr>
-							<tr style="background: var(--bg-light);">
-								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>GOTUNNEL_PROXY</code></td>
-								<td style="padding: 0.75rem; border: 1px solid var(--border);">Proxy mode</td>
-								<td style="padding: 0.75rem; border: 1px solid var(--border);"><code>auto</code></td>
-							</tr>
 						</tbody>
 					</table>
 
-					<h2 id="docker">Docker Deployment</h2>
+					<h2 id="issues">Common Issues</h2>
 
-					<h3>Docker Compose</h3>
-					<pre><code>version: '3.8'
-services:
-  gotunnel:
-    image: ghcr.io/v1truv1us/gotunnel:latest
-    ports:
-      - "8080:8080"
-      - "8443:8443"
-    environment:
-      - ENVIRONMENT=production
-    volumes:
-      - ./certs:/app/certs
-      - ./config:/app/config
-    restart: unless-stopped</code></pre>
+					<h3>Mobile device can't resolve .local domain</h3>
+					<p>iOS browsers don't resolve <code>.local</code> via mDNS. Use the relay server (<code>gotunnel expose</code>) for mobile testing, or access via the Mac's IP address.</p>
 
-					<h2 id="metrics">Metrics</h2>
+					<h3>Certificate warning in browser</h3>
+					<p>gotunnel uses self-signed certificates via mkcert. To trust them locally:</p>
+					<pre><code>mkcert -install</code></pre>
+					<p>For mobile devices, accept the certificate warning or use the relay server (which uses your server's TLS).</p>
 
-					<p>gotunnel exposes Prometheus metrics at <code>:9090/metrics</code>:</p>
+					<h3>Port 8080 already in use</h3>
+					<p>Another process is using the proxy port. Use <code>--proxy-http-port 9080</code> to change it, or <code>--proxy=none</code> to skip the proxy.</p>
 
-					<ul>
-						<li><code>gotunnel_tunnels_active</code> - Number of active tunnels</li>
-						<li><code>gotunnel_requests_total</code> - Total HTTP requests processed</li>
-						<li><code>gotunnel_request_duration_seconds</code> - Request processing time</li>
-						<li><code>gotunnel_errors_total</code> - Total errors by type</li>
-					</ul>
+					<h3>Relay connection refused</h3>
+					<p>Check that the relay server is running and the domain is correct. The client auto-reconnects every 3 seconds.</p>
 
-					<h2 id="tracing">Tracing</h2>
-
-					<p>Distributed tracing via OpenTelemetry:</p>
-					<pre><code># With OTLP endpoint
-gotunnel --debug start --port 3000 --domain myapp</code></pre>
-
-					<h2 id="common-issues">Common Issues</h2>
-
-					<h3>"Permission denied" on ports 80/443</h3>
-					<p>gotunnel uses non-privileged ports (8080/8443) by default, so this should not occur. If you override with <code>--proxy-http-port 80</code>, you need sudo or <code>setcap</code>.</p>
-
-					<h3>"Domain not accessible"</h3>
-					<p><code>.localhost</code> domains resolve to 127.0.0.1 via RFC 6761 on all modern OSes. If yours doesn't resolve:</p>
-					<pre><code># Verify resolution
-ping myapp.localhost
-# Should resolve to 127.0.0.1</code></pre>
-
-					<div class="alert alert-warning">
-						<strong>Note:</strong> Some older Linux distributions may not have .localhost resolution. Add an entry to <code>/etc/hosts</code> manually if needed: <code>127.0.0.1 myapp.localhost</code>
+					<div class="alert alert-info">
+						<strong>Need help?</strong> Open an issue on <a href="https://github.com/v1truv1us/gotunnel/issues">GitHub</a>.
 					</div>
-
-					<h2 id="debug-mode">Debug Mode</h2>
-
-					<pre><code># Enable debug logging
-gotunnel --debug start --port 3000 --domain myapp
-
-# Check observability
-curl http://localhost:9090/metrics</code></pre>
 				</div>
 			</div>
 		</main>
