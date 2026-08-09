@@ -3,6 +3,7 @@ package proxy
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,6 +13,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func freePort(t *testing.T) int {
+	t.Helper()
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port
+}
 
 func TestNewManager(t *testing.T) {
 	config := ProxyConfig{
@@ -79,10 +88,10 @@ func TestBuiltInProxyRouting(t *testing.T) {
 	parts := strings.Split(backendHost, ":")
 	require.Len(t, parts, 2)
 	
-	// Create proxy manager with dynamic port allocation (port 0)
+	// Create proxy manager with an allocated free port
 	config := ProxyConfig{
 		Mode:     BuiltInProxy,
-		HTTPPort: 0, // Use dynamic port allocation for CI compatibility
+		HTTPPort: freePort(t), // Use a free port so tests don't collide with a running daemon
 	}
 	manager := NewManager(config)
 
@@ -123,10 +132,10 @@ func TestBuiltInProxyRouting(t *testing.T) {
 }
 
 func TestBuiltInProxyNotFound(t *testing.T) {
-	// Create proxy manager with dynamic port
+	// Create proxy manager with an allocated free port
 	config := ProxyConfig{
 		Mode:     BuiltInProxy,
-		HTTPPort: 0, // Use dynamic port allocation
+		HTTPPort: freePort(t), // Use a free port so tests don't collide with a running daemon
 	}
 	manager := NewManager(config)
 
@@ -159,7 +168,7 @@ func TestBuiltInProxyNotFound(t *testing.T) {
 func TestProxyLifecycle(t *testing.T) {
 	config := ProxyConfig{
 		Mode:     BuiltInProxy,
-		HTTPPort: 0, // Use dynamic port allocation
+		HTTPPort: freePort(t), // Use a free port so tests don't collide with a running daemon
 	}
 	manager := NewManager(config)
 

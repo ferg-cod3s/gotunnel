@@ -83,3 +83,9 @@ pnpm-debug.log*
 *.temp
 temp/
 tmp/
+
+# Build outputs
+/gotunnel
+/gotunnel-relay
+/data/
+/*.png
